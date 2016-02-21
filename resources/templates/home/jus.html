@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    body {width:100%; height:100%; overflow:hidden, margin:0}
+    html {width:100%; height:100%; overflow:hidden}
+</style>
+<input id="__anti-forgery-token" name="__anti-forgery-token" type="hidden" value="{{af-token}}"/>
+<div id="app"></div>
+{% endblock %}
+
+{% block js-bottom %}
+<script type="text/javascript">jus.jus.main();</script>
+{% endblock %}
+
