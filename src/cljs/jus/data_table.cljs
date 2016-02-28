@@ -33,6 +33,7 @@
 (defn data-row
 	[row col-widths  level show-tooltip?]
   	(let [mouse-over-row? true]
+			;(println "render")
 		[h-box
 		 :class "rc-div-table-row"
 		 :style (if (:selected row) {:border-style "outset" :border-color "#6F99AD" :border-width "3px"})
@@ -49,11 +50,11 @@
 														 (condp = (:type params)
 															 :label [label :label (label1 row) :width (:width params) :on-click
 																			 (if (= (:action params) :click) (handler-fn ((:function params) (:id row) (:level row))))
-																			 :attr {:on-double-click   #((:double-click params)) }
+																			 :attr {:on-double-click   #((:double-click params) row) }
 																			 ]
                                :href [hyperlink-href :label (label1 row) :href (if (:link-d row) (:link-d row) "http://google.com") :target "_blank" :style {:width (:width params)} ]
 															 :label-tooltip [label :label (tooltip-label label1 (label1 row) (str (:tooltip params) (label1 (:tooltip  row) ) ) show-tooltip?)	:width (:width params)]
-															 :check-box [h-box :width (:width params) :children [[checkbox :model (label1 row) :disabled? (:disabled? params) :on-change #((:action params) (:id row) (:field params) (label1 row))]]]
+															 :check-box [h-box :width (:width params) :children [[checkbox :model (label1 row) :disabled? (:disabled? params) :on-change #((:action params) row)]]]
 															 :row-button [h-box :gap (:gap params) :width (:width params) :justify (:justify params)
 																						:children
 																						[(doall (for [r-b (:children params)]
