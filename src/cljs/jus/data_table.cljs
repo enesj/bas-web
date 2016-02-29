@@ -1,6 +1,6 @@
 (ns jus.data-table
 	(:use [com.rpl.specter :only [transform setval FIRST LAST ALL keypath filterer srange comp-paths compiled-select collect-one compiled-setval]])
-	(:require [re-com.core :refer [h-box v-box box gap line row-button label checkbox horizontal-bar-tabs vertical-bar-tabs title p hyperlink-href]
+	(:require [re-com.core :refer [h-box v-box box gap line row-button label checkbox horizontal-bar-tabs vertical-bar-tabs title p hyperlink-href slider]
 						 :refer-macros [handler-fn]]
 						[re-com.buttons :refer [row-button-args-desc]]
 						[re-com.util :refer [enumerate]]
@@ -8,7 +8,7 @@
 						[jus.md-circle-icon-button :refer [icons example-icons]]
 						[jus.utils :refer [panel-title title2 args-table material-design-hyperlink github-hyperlink status-text]]
 						[ajax.core :refer [GET]]
-						[reagent.core :as reagent]))
+						[reagent.core :as r]))
 
 
 
@@ -18,7 +18,7 @@
 
 (defn tooltip-label [label1 label tip show-tooltip? ]
 	(let [label-kw (keyword label1)
-				showing? (reagent/atom (label-kw @show-tooltip?))
+				showing? (r/atom (label-kw @show-tooltip?))
 				ic-label [:div
 									{:style         {:color "#555657"}
 									 :on-mouse-over #(swap! show-tooltip? assoc-in [label-kw] 1 )
@@ -45,7 +45,7 @@
 		 :children [(doall (for [param col-widths]
 												 (let [label1 (key param)
 															 params (val param)]
-													 ;(println  (:disabled? (first (:children params))) )
+													 ;(println  label1 row)
 													 (with-meta
 														 (condp = (:type params)
 															 :label [label :label (label1 row) :width (:width params) :on-click
@@ -55,6 +55,7 @@
                                :href [hyperlink-href :label (label1 row) :href (if (:link-d row) (:link-d row) "http://google.com") :target "_blank" :style {:width (:width params)} ]
 															 :label-tooltip [label :label (tooltip-label label1 (label1 row) (str (:tooltip params) (label1 (:tooltip  row) ) ) show-tooltip?)	:width (:width params)]
 															 :check-box [h-box :width (:width params) :children [[checkbox :model (label1 row) :disabled? (:disabled? params) :on-change #((:action params) row)]]]
+															 :slider [h-box :width (:width params) :style (:style-value params) :children [[slider :width "30px" :min (:min params) :max (:max params) :step (:setp params) :model (label1 row) :disabled? nil :on-change #((:action params) row %)]]]
 															 :row-button [h-box :gap (:gap params) :width (:width params) :justify (:justify params)
 																						:children
 																						[(doall (for [r-b (:children params)]
@@ -86,7 +87,7 @@
 																																		 (:label params) (:label params)
 																																		 :else label1) :width (:width params)])]]
 															;(if-not level
-															(for [row (sort-by :naslov (vals rows))]
-																^{:key (:id row)} [data-row row col-widths-types level  (reagent/atom nil)])
+															(for [row  (sort-by :naslov (vals rows))]
+																^{:key (:id row)} [data-row row col-widths-types level  (r/atom nil)])
 															;)
 															]]]]))

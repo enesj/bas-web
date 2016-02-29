@@ -121,11 +121,10 @@
 												:error-handler #(println "some error occured: " %)})))
 
 
-(defn obavezan-jus [row]
+(defn obavezan-jus [row data]
 	(let [id (:id row)
-				criteria {:JUSId id}
-				data (if (= 1 (:obavezan row)) 0 1)]
-		;(println row)
+				criteria {:JUSId id}]
+		;(println "obv")
 		(GET "/jus/update" {:params        {:filter criteria :field-data [{:Mandatory data}] :like false}
 												:handler       (fn [x] (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Mandatory] data y)))))
 												:error-handler #(println "some error occured: " %)})))
@@ -493,7 +492,8 @@
 																						:veze     {:type :label-tooltip :width "5%" :icon (icon-label "zmdi-attachment-alt" "Ukupan broj vezanih standarda") :field nil :action false :tooltip "Broj direktno vezanih JUS standarda: "}
 																						:gotovo   {:type :label-tooltip :width "5%" :icon (icon-label "zmdi-key" "Ukupan broj završenih vezanih standarda") :field nil :action false :tooltip "Završeno direktno vezanih JUS standarda: "}
 																						:ok       {:type :check-box :width "5%" :icon (icon-label "zmdi-shield-check" "Završen unos vezanih standarda") :field "Locked" :disabled? nil :action lock-jus}
-																						:obavezan {:type :check-box :width "5%" :icon (icon-label "zmdi-alert-circle" "Sa obaveznom primjenom") :field "Mandatory" :disabled? nil :action obavezan-jus}
+																						:obavezan {:type :slider :width "5%" :min 0 :max 2 :step 1 :icon (icon-label "zmdi-alert-circle" "Sa obaveznom primjenom") :field "Mandatory" :disabled? nil :action obavezan-jus
+																											 :style-value  {:color "blue"}}
 																						:brisi    {:type     :row-button :gap "2px" :width "2%" :justify :end :icon (icon-label "zmdi-delete" "Brisanje reda")
 																											 :children [{:id               "r-b-1" :md-icon-name "zmdi zmdi-delete" :tooltip (if alow-new-veza "Obriši vezu!" "Ova veza je zaključana!")
 																																	 :tooltip-position :left-center :disabled? (disable-del nil) :action delete-veza-event}]}})
