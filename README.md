@@ -18,6 +18,11 @@ _admin@localhost.de_ and password: _admin_ to a new database)
 3. (start-figwheel!)
 4. (cljs-repl)
 
+SHIFT-INSERT ---> PASTE !!!!!
+
+KOMPILACIJA BEZ FIGWHEEL-a !!!!
+
+lein with-profile -dev,+adv cljsbuild once
 
 
 
