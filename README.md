@@ -24,6 +24,9 @@ KOMPILACIJA BEZ FIGWHEEL-a !!!!
 
 lein with-profile -dev,+adv cljsbuild once
 
+PROMJENA KONFIGURACIJE !!!! 
+
+java -jar -Dclosp-config-path=.\\resources\\jus.edn jus-new.jar
 
 
 ## Features
