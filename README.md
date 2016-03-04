@@ -22,11 +22,13 @@ SHIFT-INSERT ---> PASTE !!!!!
 
 KOMPILACIJA BEZ FIGWHEEL-a !!!!
 
-lein with-profile -dev,+adv cljsbuild once
+lein with-profile -dev,+uberjar cljsbuild once adv
 
 PROMJENA KONFIGURACIJE !!!! 
 
 java -jar -Dclosp-config-path=.\\resources\\jus.edn jus-new.jar
+
+java -jar -Dclosp-config-path=./resources/jus.edn jus-new.jar
 
 
 ## Features

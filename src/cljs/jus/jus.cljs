@@ -111,16 +111,14 @@
 	(let [jus-id (if id (first id) (:choice @showing))
 				[parent child] (current-parent-child jus-id)
 				new (first (filterv #(= jus-id (:JUSId %)) (:data @jus-all-data)))]
-		(println parent child)
-
-		(if parent (GET "/jus/add-veza" {:params        {:parent parent :child child}
+		(when parent (GET "/jus/add-veza" {:params        {:parent parent :child child}
 													:handler       #(swap! count-veze update-in [parent]
 																								 (fn [x] {:total (inc (:total x)) :locked (+ (:locked x) (:Locked new)) :childs (conj (:childs x) child)}))
-													:error-handler #(println "some error occured: " %)})
+													:error-handler #(println "some error occured: " %)}
 		(if-not id (do (swap! showing assoc-in [:choice] nil)
 									 (init-veza [parent child])
 									 (if-not (some #(= (:JUSId %) (:JUSId new)) (:data @jus-data))
-										 (swap! jus-data update-in [:data] #(merge % new))))))))
+										 (swap! jus-data update-in [:data] #(merge % new)))))))))
 
 
 
