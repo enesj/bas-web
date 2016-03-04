@@ -12,11 +12,11 @@
 						[jus.utils :refer [panel-title title2 args-table material-design-hyperlink github-hyperlink status-text]]
 						[re-com.popover :refer [popover-tooltip]]
 						[jus.data-table :refer [data-table table-state nova-naredba-atom colors delete-dialog-template add-nova-naredba-dialog-template
-																		cljs-ajax-upload-file edit-nova-naredba-dialog-template]])
+																		cljs-ajax-upload-file edit-nova-naredba-dialog-template jus-data]])
 	(:import [goog.events EventType]))
 
 
-(def jus-data (atom {:data nil}))
+
 
 (def jus-all-data (atom {:data nil}))
 
@@ -46,15 +46,15 @@
 
 (defn count-veze-fn []
 	(GET "/jus/count-veze" {:handler       #(reset! count-veze %)
-													:error-handler #(println "some error occured: " %)}))
+													:error-handler #(js/alert  (str "error: " % ))}))
 
 (defn init-jus-data []
 	(GET "/jus/active-data" {:handler       #(do (swap! jus-data assoc-in [:data] (first %)) (swap! table-state assoc-in [:veza] (second %)))
-													 :error-handler #(println "some error occured: " %)}))
+													 :error-handler #(js/alert  (str "error: " % ))}))
 
 (defn init-only-jus []
 	(GET "/jus/only-jus" {:handler       #(swap! jus-all-data assoc-in [:data] %)
-												:error-handler #(println "some error occured: " %)}))
+												:error-handler #(js/alert  (str "error: " % ))}))
 
 (defn alow-new-veza []
 	(let [path (r/cursor table-state [:path])]
@@ -67,7 +67,7 @@
 		(let [[parent child] (first opt)]
 			(swap! table-state update-in [:veza] #(merge % {:Parent parent :Child child})))
 		(GET "/jus/veza" {:handler       #(swap! table-state assoc-in [:veza] %)
-											:error-handler #(println "some error occured: " %)})))
+											:error-handler #(js/alert  (str "error: " % ))})))
 
 (defn current-parent-child [& id]
 	(let [local-state @table-state
@@ -87,18 +87,17 @@
 												:handler       (fn [x] (do (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Locked] data y))))
 																									 (swap! count-veze update-in [parent :locked]
 																													(fn [x] (if (= 0 data) (dec x) (inc x))))))
-												:error-handler #(println "some error occured: " %)})))
+												:error-handler #(js/alert  (str "error: " % ))})))
 
 (defn obavezan-jus [row data]
 	(let [id (:id row)
 				criteria {:JUSId id}]
 		(GET "/jus/update" {:params        {:filter criteria :field-data [{:Mandatory data}] :like false}
 												:handler       (fn [x] (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Mandatory] data y)))))
-												:error-handler #(println "some error occured: " %)})))
+												:error-handler #(js/alert  (str "error: " % ))})))
 
-(defn exist-veza []
-	(let [parent (first (current-parent-child))
-				child (second (current-parent-child))]
+(defn exist-veza [& id]
+	(let [[parent child](if id (current-parent-child (first id)) (current-parent-child ) )]
 		(or (not-empty (filterv #(= % {:Parent parent :Child child}) (:veza @table-state)))
 				(= parent child)
 				(is-child? child parent)
@@ -111,14 +110,16 @@
 	(let [jus-id (if id (first id) (:choice @showing))
 				[parent child] (current-parent-child jus-id)
 				new (first (filterv #(= jus-id (:JUSId %)) (:data @jus-all-data)))]
-		(when parent (GET "/jus/add-veza" {:params        {:parent parent :child child}
+		(when parent
+			(init-veza [parent child])
+			(GET "/jus/add-veza" {:params        {:parent parent :child child}
 													:handler       #(swap! count-veze update-in [parent]
 																								 (fn [x] {:total (inc (:total x)) :locked (+ (:locked x) (:Locked new)) :childs (conj (:childs x) child)}))
-													:error-handler #(println "some error occured: " %)}
+													:error-handler #(js/alert  (str "error: " % ))})
+
 		(if-not id (do (swap! showing assoc-in [:choice] nil)
-									 (init-veza [parent child])
 									 (if-not (some #(= (:JUSId %) (:JUSId new)) (:data @jus-data))
-										 (swap! jus-data update-in [:data] #(merge % new)))))))))
+										 (swap! jus-data update-in [:data] #(merge % new))))))))
 
 
 
@@ -128,7 +129,7 @@
 				old (first (filterv #(= child (:JUSId %)) (:data @jus-data)))]
 		(do (GET "/jus/del-veza" {:params        {:parent level :child child}
 															:handler       #(init-veza)
-															:error-handler #(println "some error occured: " %)})
+															:error-handler #(js/alert  (str "error: " % ))})
 				(swap! count-veze update-in [level]
 							 (fn [x] {:total (dec (:total x)) :locked (- (:locked x) (:Locked old)) :childs (remove #{child} (:childs x))}))
 				(reset-path {:level ((clojure.set/map-invert (:path local-state)) level)}))))
@@ -150,7 +151,7 @@
 (defn delete-jus []
 	(GET "/jus/delete" {:params        {:jusid (:jusid (:delete-jus-modal @table-state))}
 											:handler       #(init-jus-data)
-											:error-handler #(println "some error occured: " %)}))
+											:error-handler #(js/alert  (str "error: " % ))}))
 
 (defn delete-jus-dialog-template [process-ok process-cancel]
 	[h-box
@@ -181,9 +182,7 @@
 
 (defn naredba-exist [naslov]
 	(let [n-exist (first (filter #(= naslov (:JUSopis %)) (:data @jus-data)))]
-		;(println "e " (:JUSId n-exist))
-		(if n-exist (:JUSId n-exist) nil)
-))
+		(if n-exist (:JUSId n-exist) nil)))
 
 (defn add-nova-naredba []
 	(let [data @nova-naredba-atom
@@ -197,14 +196,11 @@
 				old-id (naredba-exist (:naslov data))
 				id (or old-id  (new-id))
 				fields-data (merge naslov direktiva link file naredba glasnik {:JUSId id :Locked 0})]
-		;(println "ne"  (naredba-exist (:naslov data)) "naslov" (:naslov data))
-		(if (> (:naredba data) 1) (add-veza id))
-		;(println "old new" old-id id)
+		(if (and (> (:naredba data) 1) (not (exist-veza id))) (add-veza id))
 		(if-not old-id
-			;(println "insert" fields-data)
-		(GET "/jus/insert" {:params        {:field-data [fields-data]}
+			(GET "/jus/insert" {:params        {:field-data [fields-data]}
 												:handler       #(init-jus-data)
-												:error-handler #(println "some error occured: " %)}))))
+												:error-handler #(js/alert  (str "error: " % ))}))))
 
 
 (defn add-nova-naredba-dialog []
@@ -236,7 +232,7 @@
 				fields-data (merge naslov direktiva link file glasnik naredba)]
 		(GET "/jus/update" {:params        {:filter jusid :field-data [fields-data] :like false}
 												:handler       (fn [x] (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= (:jusid data) (:JUSId %))] (merge fields-data jusid) y))))
-												:error-handler #(println "some error occured: " %)})))
+												:error-handler #(js/alert  (str "error: " % ))})))
 
 (defn edit-nova-naredba-dialog []
 	(let [process-ok (fn [event]
@@ -378,7 +374,7 @@
 
 (defn rows-naredbe-stare [data screen level] (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis Glasnik Link-n Link-d Naredba Locked]} x
 																																					count-veza (count-veza JUSId)]
-																																			(if (= Naredba level)
+																																			(if (> Naredba 0)
 																																				{JUSId {:id          JUSId
 																																								:naslov-full JUSopis
 																																								:naslov      (h/cut-str-at JUSopis screen)
@@ -738,4 +734,4 @@
 	(for [[child parent] (partition 2 (for [veza (select [ALL ALL LAST] (map vec (into #{} (dummy-veza))))] veza))]
 		(GET "/jus/add-veza" {:params        {:parent parent :child child}
 													:handler       #(do (swap! showing assoc-in [:choice] nil) (init-veza [parent child]))
-													:error-handler #(do (println "some error occured: " %) (init-veza))})))
+													:error-handler #(do (js/alert  (str "error: " % )) (init-veza))})))

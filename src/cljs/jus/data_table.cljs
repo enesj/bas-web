@@ -17,6 +17,9 @@
 												:delete-modal     {:show? false :level nil :child nil} :nova-naredba-modal {:show? false :edit? false :naslov nil :direktiva nil :link nil :file nil}
 												:delete-jus-modal {:show? false :jusid nil}}))
 
+
+(def jus-data (r/atom {:data nil}))
+
 (def nova-naredba-atom (r/atom {:jusid nil :naslov nil :direktiva nil :link nil :file nil :glasnik nil :naredba nil :X-CSRF-Token nil}))
 
 (def colors
@@ -70,6 +73,11 @@
 					 :id    "upload-file"}])
 
 
+(defn naredba-exist [naslov]
+	(let [n-exist (first (filter #(= naslov (:JUSopis %)) (:data @jus-data)))]
+		;(println "e " (:JUSId n-exist))
+		(if n-exist (:JUSId n-exist) nil)))
+
 (defn add-nova-naredba-dialog-template [process-ok process-cancel]
 	[v-box
 	 :width "700px"
@@ -77,7 +85,7 @@
 								(f/panel
 									"Dodaj naredbu: "
 									(f/form
-										(f/text "Naslov" nova-naredba-atom [:naslov])
+										(f/text "Naslov" nova-naredba-atom [:naslov] )
 										(f/text "Glasnik" nova-naredba-atom [:glasnik])
 										(f/text "Direktiva" nova-naredba-atom [:direktiva])
 										(f/text "Link" nova-naredba-atom [:link])
@@ -89,7 +97,7 @@
 								(f/panel
 									"Dodaj naredbu: "
 									(f/form
-										(f/text "Naslov" nova-naredba-atom [:naslov])
+										(f/text {:on-blur  #(if (naredba-exist (:naslov @nova-naredba-atom)) (js/alert "Ova naredba postoji!" ) )} "Naslov" nova-naredba-atom [:naslov]  )
 										(f/text "Glasnik" nova-naredba-atom [:glasnik])
 										(f/text "File" nova-naredba-atom [:file])
 										(upload-component)
