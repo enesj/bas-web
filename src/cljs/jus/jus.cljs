@@ -179,6 +179,12 @@
 																																		process-ok
 																																		process-cancel]]))))
 
+(defn naredba-exist [naslov]
+	(let [n-exist (first (filter #(= naslov (:JUSopis %)) (:data @jus-data)))]
+		;(println "e " (:JUSId n-exist))
+		(if n-exist (:JUSId n-exist) nil)
+))
+
 (defn add-nova-naredba []
 	(let [data @nova-naredba-atom
 				naslov {:JUSopis (:naslov data)}
@@ -188,12 +194,17 @@
 				X-CSRF-Token (:X-CSRF-Token data)
 				file {:Link-n (cljs-ajax-upload-file "upload-file" X-CSRF-Token)}
 				naredba {:Naredba (:naredba data)}
-				id (new-id)
+				old-id (naredba-exist (:naslov data))
+				id (or old-id  (new-id))
 				fields-data (merge naslov direktiva link file naredba glasnik {:JUSId id :Locked 0})]
+		;(println "ne"  (naredba-exist (:naslov data)) "naslov" (:naslov data))
 		(if (> (:naredba data) 1) (add-veza id))
+		;(println "old new" old-id id)
+		(if-not old-id
+			;(println "insert" fields-data)
 		(GET "/jus/insert" {:params        {:field-data [fields-data]}
 												:handler       #(init-jus-data)
-												:error-handler #(println "some error occured: " %)})))
+												:error-handler #(println "some error occured: " %)}))))
 
 
 (defn add-nova-naredba-dialog []
