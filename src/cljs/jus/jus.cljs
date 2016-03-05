@@ -98,10 +98,11 @@
 
 (defn exist-veza [& id]
 	(let [[parent child](if id (current-parent-child (first id)) (current-parent-child ) )]
+		(println "p-c" [parent child] "id" id)
 		(or (not-empty (filterv #(= % {:Parent parent :Child child}) (:veza @table-state)))
 				(= parent child)
 				(is-child? child parent)
-				(< (count (:path @table-state)) 2))))
+				)))
 
 (defn reset-path [row]
 	(swap! table-state update-in [:path] (fn [x] (into {} (take-while #(not= (next-level (:level row)) (key %)) x)))))
@@ -116,7 +117,6 @@
 													:handler       #(swap! count-veze update-in [parent]
 																								 (fn [x] {:total (inc (:total x)) :locked (+ (:locked x) (:Locked new)) :childs (conj (:childs x) child)}))
 													:error-handler #(js/alert  (str "error: " % ))})
-
 		(if-not id (do (swap! showing assoc-in [:choice] nil)
 									 (if-not (some #(= (:JUSId %) (:JUSId new)) (:data @jus-data))
 										 (swap! jus-data update-in [:data] #(merge % new))))))))
@@ -184,7 +184,7 @@
 	(let [n-exist (first (filter #(= naslov (:JUSopis %)) (:data @jus-data)))]
 		(if n-exist (:JUSId n-exist) nil)))
 
-(defn add-nova-naredba []
+(defn add-nova-naredba [& old-id]
 	(let [data @nova-naredba-atom
 				naslov {:JUSopis (:naslov data)}
 				glasnik {:Glasnik (:glasnik data)}
@@ -199,13 +199,13 @@
 		(if (and (> (:naredba data) 1) (not (exist-veza id))) (add-veza id))
 		(if-not old-id
 			(GET "/jus/insert" {:params        {:field-data [fields-data]}
-												:handler       #(init-jus-data)
+												:handler       #(do (init-jus-data) (println fields-data))
 												:error-handler #(js/alert  (str "error: " % ))}))))
 
 
 (defn add-nova-naredba-dialog []
-	(let [process-ok (fn [event]
-										 (add-nova-naredba)
+	(let [process-ok (fn [event id]
+										 (add-nova-naredba id)
 										 (reset! nova-naredba-atom {:naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba nil :X-CSRF-Token nil})
 										 (swap! table-state assoc-in [:nova-naredba-modal] {:show? false}))
 				process-cancel (fn [event]
@@ -488,7 +488,7 @@
 																	 prefix (:prefix @showing)
 																	 rows-naredbe (rows-naredbe (filter #(= (:Naredba %) 1) @jus-data) screen)
 																	 alow-new-veza (alow-new-veza)
-																	 v-height (str (* (.-innerHeight js/window) 0.8) "px")]
+																	 v-height (* (.-innerHeight js/window) 0.8)]
 															 (if (not-empty rows-naredbe)
 																 [:div
 																	[v-box
@@ -511,7 +511,7 @@
 																							 :children [[title :level :level3 :style {:font-weight "bold" :font-family "Courier New"} :label "Naredbe vezane za evropske direktive"]
 																													[v-split
 																													 :style {:margin-left "auto" :margin-right "auto"}
-																													 :size v-height
+																													 :size (str  v-height "px")
 																													 :width "70%"
 																													 :initial-split "70%"
 																													 :margin "1px"
@@ -525,7 +525,7 @@
 																														[
 																														 [v-split
 																															:style {:margin-left "auto" :margin-right "auto"}
-																															;:size "600px"
+																															:size (str   v-height "px")
 																															:width "100%"
 																															:initial-split "65%"
 																															:panel-1-max-h 350
@@ -546,7 +546,7 @@
 																																					 ;:min-height "200px"
 																																					 :child [data-table rows-naredbe col-widths-types-naredbe :0]]
 																																					[button
-																																					 :label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-collection-plus]]
+																																					 :label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
 																																					 :on-click #(add-nova-naredba-event 1)
 																																					 :style {:color            "white"
 																																									 :font-size        "14px"
@@ -562,6 +562,7 @@
 																															 :height "auto"
 																															 :children
 																															 [[v-split
+																																 :size (str   v-height "px")
 																																 :width "100%"
 																																 :initial-split "65%"
 																																 :panel-1-max-h 350
@@ -586,7 +587,7 @@
 																																			[data-table (rows-naredbe-stare (rows-level :1) screen 2) col-widths-types-naredbe-stare :1]
 																																			[:div ""])]
 																																	 [button
-																																		:label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-collection-plus]]
+																																		:label [:span "Stara nareddba 1 " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
 																																		:on-click #(add-nova-naredba-event 2)
 																																		:style {:color            "white"
 																																						:font-size        "14px"
@@ -614,8 +615,9 @@
 																																			[data-table (rows-naredbe-stare (rows-level :2) screen 3) col-widths-types-naredbe-stare :2]
 																																			[:div ""])]
 																																	 [button
-																																		:label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-collection-plus]]
+																																		:label [:span "Stara nareddba 2 " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
 																																		:on-click #(add-nova-naredba-event 3)
+																																		:disabled? (< (count path) 2)
 																																		:style {:color            "white"
 																																						:font-size        "14px"
 																																						:background-color (:2 colors)
@@ -630,7 +632,7 @@
 																														:width "100%"
 																														:max-width "1100px"
 																														:min-width "400px"
-																														:max-height "400px"
+																														:max-height (str  (* v-height 0.8) "px")
 																														:child [v-box
 																																		:width "100%"
 																																		:children [(doall (for [level-key (keys (rest path))] (data-tables-level level-key path screen)))
@@ -673,8 +675,8 @@
 																																															#(swap! showing assoc-in [:choice] %)]
 																																														 [gap :size "4px"]
 																																														 [button
-																																															:label [:span "Dodaj JUS " [:i.zmdi.zmdi-hc-fw-rc.zmdi-download]]
-																																															:disabled? (or (not choice) (exist-veza) (not alow-new-veza))
+																																															:label [:span "JUS " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
+																																															:disabled? (or (not choice) (exist-veza) (not alow-new-veza) (< (count path) 2))
 																																															:on-click #(add-veza)
 																																															:style {:color            "white"
 																																																			:font-size        "14px"

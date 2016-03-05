@@ -16,7 +16,6 @@
            c))
 
 (defn get-value [elem]
-  ;(println (gdom/getElement "app") )
   (gforms/getValue (gdom/getElement elem)))
 
 (defn get-elem [id] (gdom/getElement id))

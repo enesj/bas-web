@@ -9,6 +9,7 @@
 						[ajax.core :refer [GET POST json-response-format json-request-format url-request-format ajax-request]]
 						[jus.md-circle-icon-button :refer [icons example-icons]]
 						[jus.utils :refer [panel-title title2 args-table material-design-hyperlink github-hyperlink status-text]]
+						[jus.helper :as h]
 						[ajax.core :refer [GET]]
 						[reagent.core :as r]))
 
@@ -78,6 +79,8 @@
 		;(println "e " (:JUSId n-exist))
 		(if n-exist (:JUSId n-exist) nil)))
 
+(def postojeca (r/atom nil))
+
 (defn add-nova-naredba-dialog-template [process-ok process-cancel]
 	[v-box
 	 :width "700px"
@@ -97,12 +100,17 @@
 								(f/panel
 									"Dodaj naredbu: "
 									(f/form
-										(f/text {:on-blur  #(if (naredba-exist (:naslov @nova-naredba-atom)) (js/alert "Ova naredba postoji!" ) )} "Naslov" nova-naredba-atom [:naslov]  )
+										(f/text {:on-blur  #(reset! postojeca (naredba-exist (h/get-value "naslov")))
+																						:style (if @postojeca {:border-color "red"} {:border-color "lightgray"}) }
+														"Naslov" nova-naredba-atom [:naslov]
+														:warn-fn #(do (if @postojeca "Ova naredba postoji!"))
+														)
+
 										(f/text "Glasnik" nova-naredba-atom [:glasnik])
 										(f/text "File" nova-naredba-atom [:file])
 										(upload-component)
 										(f/form-buttons
-											(f/button-primary "Snimi" #(process-ok))
+											(f/button-primary "Snimi" #(process-ok @postojeca))
 											(f/button-default "Cancel" #(process-cancel))))))]])
 
 (defn edit-nova-naredba-dialog-template [process-ok process-cancel]
