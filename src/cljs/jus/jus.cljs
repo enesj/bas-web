@@ -98,7 +98,6 @@
 
 (defn exist-veza [& id]
 	(let [[parent child](if id (current-parent-child (first id)) (current-parent-child ) )]
-		(println "p-c" [parent child] "id" id)
 		(or (not-empty (filterv #(= % {:Parent parent :Child child}) (:veza @table-state)))
 				(= parent child)
 				(is-child? child parent)
@@ -199,7 +198,7 @@
 		(if (and (> (:naredba data) 1) (not (exist-veza id))) (add-veza id))
 		(if-not old-id
 			(GET "/jus/insert" {:params        {:field-data [fields-data]}
-												:handler       #(do (init-jus-data) (println fields-data))
+												:handler       #(init-jus-data)
 												:error-handler #(js/alert  (str "error: " % ))}))))
 
 
@@ -437,9 +436,9 @@
 	(let [splitter0 (.item (.getElementsByClassName (h/get-elem "app") "display-flex re-v-split-splitter") 0)
 				splitter1 (.item (.getElementsByClassName (h/get-elem "app") "display-flex re-v-split-splitter") 1)
 				splitter2 (.item (.getElementsByClassName (h/get-elem "app") "display-flex re-v-split-splitter") 2)]
-		(if splitter0 (aset splitter0 "style" "flex: 0 0 8px	; cursor: row-resize; border-top: 1px solid ; border-bottom: 1px solid; border-color: lightgray;"))
-		(if splitter1 (aset splitter1 "style" "flex: 0 0 8px	; cursor: row-resize; border-top: 1px solid;  border-bottom: 1px solid; border-color: lightgray;"))
-		(if splitter2 (aset splitter2 "style" "flex: 0 0 8px	; cursor: row-resize; border-top: 1px solid;  border-bottom: 1px solid; border-color: lightgray;"))))
+		(if splitter0 (aset splitter0 "style" "flex: 0 0 8px	; cursor: row-resize; border-top: 1px solid ; border-bottom: 1px solid; border-color: blue;"))
+		(if splitter1 (aset splitter1 "style" "flex: 0 0 8px	; cursor: row-resize; border-top: 1px solid;  border-bottom: 1px solid; border-color: green;"))
+		(if splitter2 (aset splitter2 "style" "flex: 0 0 8px	; cursor: row-resize; border-top: 1px solid;  border-bottom: 1px solid; border-color: orange;"))))
 
 (defn opis-level [level]
 	(let [jus (first (filterv #(= (:JUSId %) (level (:path @table-state))) (:data @jus-data)))]
@@ -513,7 +512,7 @@
 																													 :style {:margin-left "auto" :margin-right "auto"}
 																													 :size (str  v-height "px")
 																													 :width "70%"
-																													 :initial-split "70%"
+																													 :initial-split (str   (/ v-height 10) "%")
 																													 :margin "1px"
 																													 :panel-1
 																													 [v-box
@@ -527,7 +526,7 @@
 																															:style {:margin-left "auto" :margin-right "auto"}
 																															:size (str   v-height "px")
 																															:width "100%"
-																															:initial-split "65%"
+																															:initial-split (str   (/ v-height 20) "%")
 																															:panel-1-max-h 350
 																															:panel-1
 																															[v-box
@@ -564,7 +563,7 @@
 																															 [[v-split
 																																 :size (str   v-height "px")
 																																 :width "100%"
-																																 :initial-split "65%"
+																																 :initial-split (str   (/ v-height 30) "%")
 																																 :panel-1-max-h 350
 																																 :panel-1
 																																 [v-box
@@ -587,7 +586,7 @@
 																																			[data-table (rows-naredbe-stare (rows-level :1) screen 2) col-widths-types-naredbe-stare :1]
 																																			[:div ""])]
 																																	 [button
-																																		:label [:span "Stara nareddba 1 " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
+																																		:label [:span "Stara naredba I " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
 																																		:on-click #(add-nova-naredba-event 2)
 																																		:style {:color            "white"
 																																						:font-size        "14px"
@@ -615,7 +614,7 @@
 																																			[data-table (rows-naredbe-stare (rows-level :2) screen 3) col-widths-types-naredbe-stare :2]
 																																			[:div ""])]
 																																	 [button
-																																		:label [:span "Stara nareddba 2 " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
+																																		:label [:span "Stara naredba II " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
 																																		:on-click #(add-nova-naredba-event 3)
 																																		:disabled? (< (count path) 2)
 																																		:style {:color            "white"
