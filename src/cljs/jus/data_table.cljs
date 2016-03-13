@@ -15,8 +15,8 @@
 
 
 (def table-state (r/atom {:table-size       60 :table-height nil :veza nil :path nil
-												:delete-modal     {:show? false :level nil :child nil} :nova-naredba-modal {:show? false :edit? false :naslov nil :direktiva nil :link nil :file nil}
-												:delete-jus-modal {:show? false :jusid nil}}))
+													:delete-modal     {:show? false :level nil :child nil} :nova-naredba-modal {:show? false :edit? false :naslov nil :direktiva nil :link nil :file nil}
+													:delete-jus-modal {:show? false :jusid nil}}))
 
 
 (def jus-data (r/atom {:data nil}))
@@ -24,13 +24,13 @@
 (def nova-naredba-atom (r/atom {:jusid nil :naslov nil :direktiva nil :link nil :file nil :glasnik nil :naredba nil :X-CSRF-Token nil}))
 
 (def colors
-	{:0 "#33cbeb"
-	 :1 "#B5c113"
-	 :2 "#c7eb33"
-	 :3 "#f39f05"
-	 :4 "#B5c113"
-	 :5 "#B5c113"
-	 :6 "#B5D113"
+	{:0 "DarkBlue"
+	 :1 "Green"
+	 :2 "CadetBlue"
+	 :3 "GoldenRod"
+	 :4 "IndianRed"
+	 :5 "LimeGreen"
+	 :6 "Olive"
 	 :7 "#B5D113"})
 
 
@@ -76,7 +76,6 @@
 
 (defn naredba-exist [naslov]
 	(let [n-exist (first (filter #(= naslov (:JUSopis %)) (:data @jus-data)))]
-		;(println "e " (:JUSId n-exist))
 		(if n-exist (:JUSId n-exist) nil)))
 
 (def postojeca (r/atom nil))
@@ -88,11 +87,12 @@
 								(f/panel
 									"Dodaj naredbu: "
 									(f/form
-										(f/text "Naslov" nova-naredba-atom [:naslov] )
+										(f/text "Naslov" nova-naredba-atom [:naslov])
 										(f/text "Glasnik" nova-naredba-atom [:glasnik])
 										(f/text "Direktiva" nova-naredba-atom [:direktiva])
 										(f/text "Link" nova-naredba-atom [:link])
-										(f/text "File" nova-naredba-atom [:file])
+										(f/text "Link" nova-naredba-atom [:link])
+										(f/text "Napomena" nova-naredba-atom [:napomena])
 										(upload-component)
 										(f/form-buttons
 											(f/button-primary "Snimi" #(process-ok))
@@ -100,13 +100,14 @@
 								(f/panel
 									"Dodaj naredbu: "
 									(f/form
-										(f/text {:on-blur  #(reset! postojeca (naredba-exist (h/get-value "naslov")))
-																						:style (if @postojeca {:border-color "red"} {:border-color "lightgray"}) }
+										(f/text {:on-blur #(reset! postojeca (naredba-exist (h/get-value "naslov")))
+														 :style   (if @postojeca {:border-color "red"} {:border-color "lightgray"})}
 														"Naslov" nova-naredba-atom [:naslov]
 														:warn-fn #(do (if @postojeca "Ova naredba postoji!"))
 														)
 
 										(f/text "Glasnik" nova-naredba-atom [:glasnik])
+										(f/text "Napomena" nova-naredba-atom [:napomena])
 										(f/text "File" nova-naredba-atom [:file])
 										(upload-component)
 										(f/form-buttons
@@ -125,6 +126,7 @@
 										(f/text "Glasnik" nova-naredba-atom [:glasnik])
 										(f/text "Direktiva" nova-naredba-atom [:direktiva])
 										(f/text "Link" nova-naredba-atom [:link])
+										(f/text "Napomena" nova-naredba-atom [:napomena])
 										(f/text "File" nova-naredba-atom [:file])
 										(upload-component)
 										(f/form-buttons
@@ -136,6 +138,7 @@
 									(f/form
 										(f/text "Naslov" nova-naredba-atom [:naslov])
 										(f/text "Glasnik" nova-naredba-atom [:glasnik])
+										(f/text "Napomena" nova-naredba-atom [:napomena])
 										(f/text "File" nova-naredba-atom [:file])
 										(upload-component)
 										(f/form-buttons
@@ -143,24 +146,23 @@
 											(f/button-default "Cancel" #(process-cancel))))))]])
 
 
-(defn tooltip-label [label1 label tip show-tooltip? ]
+(defn tooltip-label [label1 label tip show-tooltip?]
 	(let [label-kw (keyword label1)
 				showing? (r/atom (label-kw @show-tooltip?))
 				ic-label [:div
 									{:style         {:color "#555657"}
-									 :on-mouse-over #(swap! show-tooltip? assoc-in [label-kw] 1 )
+									 :on-mouse-over #(swap! show-tooltip? assoc-in [label-kw] 1)
 									 :on-mouse-out  #(swap! show-tooltip? assoc-in [label-kw] nil)}
 									label]]
 		[box :class "display-inline-flex" :align :center :child [popover-tooltip
 																														 :label tip
 																														 :position :below-center
-																														 :showing?  showing?
+																														 :showing? showing?
 																														 :anchor ic-label]]))
 
 (defn data-row
-	[row col-widths  level show-tooltip?]
-  	(let [mouse-over-row? true]
-			;(println "row")
+	[row col-widths level show-tooltip?]
+	(let [mouse-over-row? true]
 		[h-box
 		 :class "rc-div-table-row"
 		 :style (if (:selected row) {:border-style "outset" :border-color "#6F99AD" :border-width "3px"})
@@ -169,42 +171,44 @@
 															 params (val param)]
 													 (with-meta
 														 (condp = (:type params)
-															 :label [label :label (column row) :width (:width params) :on-click
-																			 (if (= (:action params) :click) (handler-fn ((:function params) row)))
-																			 :attr {:on-double-click   #((:double-click params) row)}]
-                               :href [hyperlink-href :label (column row) :href (if (:link-d row) (:link-d row) "http://bas.gov.ba") :target "_blank" :style {:width (:width params)} ]
-															 :label-tooltip [label :label (tooltip-label column (column row) (str (:tooltip params) (column (:tooltip  row) ) ) show-tooltip?)	:width (:width params)]
-															 :check-box [h-box :width (:width params) :children [[checkbox :model (column row) :disabled? (:disabled? params) :on-change #((:action params) row)]]]
-															 :slider [h-box :width (:width params)  :children [[slider :width "30px" :min (:min params) :max (:max params) :step (:setp params) :model (column row) :disabled? nil :on-change #((:action params) row %)]]]
+															 :label [label :label (if (:tooltip params) (tooltip-label column (column row) (str (:tooltip params) (column (:tooltip row))) show-tooltip?) (column row)) :width (:width params)
+																			 :on-click (if (= (:action params) :click) (handler-fn ((:function params) row)))
+																			 :attr {:on-double-click #((:double-click params) row)}]
+															 :href [hyperlink-href :label (column row) :href (if (:link-d row) (:link-d row) "http://bas.gov.ba") :target "_blank" :style {:width (:width params)}]
+															 ;:label-tooltip [label :label (tooltip-label column (column row) (str (:tooltip params) (column (:tooltip  row) ) ) show-tooltip?)	:width (:width params)]
+															 :check-box [h-box :width (:width params) :children [[checkbox :model (column row)
+																																										:label (if (:tooltip params) (tooltip-label column (if-not (clojure.string/blank? (column (:tooltip row))) [:i.zmdi.zmdi-hc-fw-rc.zmdi-comment-text] nil) (str (:tooltip params) (column (:tooltip row))) show-tooltip?) nil)
+																																										:disabled? (:disabled? params) :on-change #((:action params) row)]]]
+															 :slider [h-box :width (:width params) :children [[slider :width "30px" :min (:min params) :max (:max params) :step (:setp params) :model (column row) :disabled? nil :on-change #((:action params) row %)]]]
 															 :row-button [h-box :gap (:gap params) :width (:width params) :justify (:justify params)
 																						:children
 																						[(doall (for [r-b (:children params)]
 																											^{:key (:id r-b)}
 																											[row-button :md-icon-name (:md-icon-name r-b) :mouse-over-row? mouse-over-row? :tooltip (:tooltip r-b)
-																																				 :tooltip-position (:tooltip-position r-b) :disabled?  ((:disabled? r-b) row) :on-click #((:action r-b) level row)]))]] nil)
+																											 :tooltip-position (:tooltip-position r-b) :disabled? ((:disabled? r-b) row) :on-click #((:action r-b) level row)]))]] nil)
 														 {:key (str column (:id row))}))))]]))
 
 
 
 (defn data-table
 	[rows col-widths-types level]
-		(fn [rows col-widths-types level]
-			[v-box
-			 :align :start
-			 :gap "10px"
-			 :width "100%"
-			 :children [[v-box
-									 :class "rc-div-table"
+	(fn [rows col-widths-types level]
+		[v-box
+		 :align :start
+		 :gap "10px"
+		 :width "100%"
+		 :children [[v-box
+								 :class "rc-div-table"
 
-									 :width "99%"
-									 :children [
-															[h-box
-															 :class "rc-div-table-header"
-															 :style {:color (level colors)}
-															 :children
-															 [(for [[label1 params] (columns col-widths-types)]
-																	^{:key label1} [label :label (cond (:icon params) (:icon params)
-																																		 (:label params) (:label params)
-																																		 :else label1) :width (:width params)])]]
-															(for [row  (sort-by :naslov (vals rows))]
-																^{:key (:id row)} [data-row row col-widths-types level  (r/atom nil)])]]]]))
+								 :width "99%"
+								 :children [
+														[h-box
+														 :class "rc-div-table-header"
+														 :style {:color (level colors)}
+														 :children
+														 [(for [[label1 params] (columns col-widths-types)]
+																^{:key label1} [label :label (cond (:icon params) (:icon params)
+																																	 (:label params) (:label params)
+																																	 :else label1) :width (:width params)])]]
+														(for [row (sort-by :naslov (vals rows))]
+															^{:key (:id row)} [data-row row col-widths-types level (r/atom nil)])]]]]))
