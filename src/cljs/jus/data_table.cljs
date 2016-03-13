@@ -160,6 +160,10 @@
 																														 :showing? showing?
 																														 :anchor ic-label]]))
 
+(def obavezan {:0 "lightgray"
+							 :1 "orange"
+							 :2 "red"})
+
 (defn data-row
 	[row col-widths level show-tooltip?]
 	(let [mouse-over-row? true]
@@ -179,7 +183,9 @@
 															 :check-box [h-box :width (:width params) :children [[checkbox :model (column row)
 																																										:label (if (:tooltip params) (tooltip-label column (if-not (clojure.string/blank? (column (:tooltip row))) [:i.zmdi.zmdi-hc-fw-rc.zmdi-comment-text] nil) (str (:tooltip params) (column (:tooltip row))) show-tooltip?) nil)
 																																										:disabled? (:disabled? params) :on-change #((:action params) row)]]]
-															 :slider [h-box :width (:width params) :children [[slider :width "30px" :min (:min params) :max (:max params) :step (:setp params) :model (column row) :disabled? nil :on-change #((:action params) row %)]]]
+															 :slider [h-box :width (:width params) :style {:border (str "1px solid " ((keyword (str (column row))) obavezan))} :children [[slider :width "30px" :min (:min params) :max (:max params) :step (:setp params) :model (column row) :disabled? nil
+																																																																														 :on-change #((:action params) row %)
+																																																																														 ]]]
 															 :row-button [h-box :gap (:gap params) :width (:width params) :justify (:justify params)
 																						:children
 																						[(doall (for [r-b (:children params)]
