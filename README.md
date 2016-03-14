@@ -26,8 +26,6 @@ lein with-profile -dev,+uberjar cljsbuild once adv
 
 PROMJENA KONFIGURACIJE !!!! 
 
-java -jar -Dclosp-config-path=.\\resources\\jus.edn jus-new.jar
-
 java -jar -Dclosp-config-path=./resources/jus.edn jus-new.jar
 
 
