@@ -89,7 +89,7 @@
         ]
     (into {} (mapv #(hash-map (first %) {:total (count (second %)) :locked (count (filterv (fn [x] (= 1 (second x))) (second %))) :childs (map first (second %)) })
                    (transform [ALL LAST ALL] (fn [x] (vector x (:Locked (first (filterv #(= x (:JUSId %)) data)))))
-                              (doall (for [id (mapv :JUSId data)] [id (mapv :Child (filterv #(= id (:Parent %)) veza))])))))))
+															 (doall (for [id (mapv :JUSId data)] [id (mapv :Child (filterv #(= id (:Parent %)) veza))])))))))
 
 
 ;(defn get-user-by-email [email] (first (select user (where {:email email}) (limit 1))))

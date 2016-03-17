@@ -32,7 +32,7 @@
     (loop [childs first-level-childs
            all-childs []]
       (if (not-empty childs)
-        (recur (mapv :Child (flatten (doall (for [id childs] (filterv #(= id (:Parent %)) veza))))) (into all-childs childs))
+        (recur (mapv :Child (set (flatten (doall (for [id childs] (filterv #(= id (:Parent %)) veza)))))) (into (set all-childs)   childs))
         all-childs))))
 
 (defn is-child? [id child] (some #{child} (all-childs id)))
@@ -112,14 +112,14 @@
   (let [[parent child] (if id (current-parent-child (first id)) (current-parent-child))]
     (or (not-empty (filterv #(= % {:Parent parent :Child child}) (:veza @table-state)))
         (= parent child)
-        (is-child? child parent)
+        ;(is-child? child parent)
         )))
 
 
 
 
 (defn reset-path [row]
-  (swap! table-state update-in [:path] (fn [x] (into {} (take-while #(not= (next-level (:level row)) (key %)) x)))))
+  (swap! table-state update-in [:path] (fn [x] (into  (sorted-map-by #(< (js/parseInt (name %1)) (js/parseInt (name %2)))) (take-while #(not= (next-level (:level row)) (key %)) x)))))
 
 (defn add-veza [& id]
   (let [jus-id (if id (first id) (:choice @showing))
@@ -312,7 +312,7 @@
              count-ok-childs 0]
         (if (not-empty childs)
           (let [childs-data (for [child childs] [(:childs (first-level-count child)) (:total (first-level-count child)) (:locked (first-level-count child))])]
-            (recur (remove nil? (flatten (map #(conj (first %)) childs-data)))
+            (recur (set (remove nil? (flatten (map #(conj (first %)) childs-data))))
                    (reduce + count-all-childs (remove nil? (map second childs-data)))
                    (reduce + count-ok-childs (map last childs-data))))
           [count-all-childs count-ok-childs first-level-childs-count first-level-ok-count])))
