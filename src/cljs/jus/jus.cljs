@@ -106,12 +106,17 @@
                         :handler       (fn [x] (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Mandatory] data y)))))
                         :error-handler #(js/alert (str "error: " %))})))
 
+
+
 (defn exist-veza [& id]
   (let [[parent child] (if id (current-parent-child (first id)) (current-parent-child))]
     (or (not-empty (filterv #(= % {:Parent parent :Child child}) (:veza @table-state)))
         (= parent child)
         (is-child? child parent)
         )))
+
+
+
 
 (defn reset-path [row]
   (swap! table-state update-in [:path] (fn [x] (into {} (take-while #(not= (next-level (:level row)) (key %)) x)))))
@@ -282,7 +287,7 @@
   (.open js/window (str "pdf/" (:link-n row))))
 
 (defn set-path [row]
-  (swap! table-state update-in [:path] (fn [x] (-> (into {} (take-while #(not= (next-level (:level row)) (key %)) x))
+  (swap! table-state update-in [:path] (fn [x] (-> (into (sorted-map-by #(< (js/parseInt (name %1)) (js/parseInt (name %2)))) (take-while #(not= (next-level (:level row)) (key %)) x))
                                                    (assoc (next-level (:level row)) (:id row))))))
 
 (defn icon-label [icon tip]
