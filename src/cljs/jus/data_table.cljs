@@ -13,8 +13,9 @@
 						[ajax.core :refer [GET]]
 						[reagent.core :as r]))
 
+(def path (r/atom nil))
 
-(def table-state (r/atom {:table-size       60 :table-height nil :veza nil :path nil
+(def table-state (r/atom {:table-height nil :veza nil :path nil
 													:delete-modal     {:show? false :level nil :child nil} :nova-naredba-modal {:show? false :edit? false :naslov nil :direktiva nil :link nil :file nil}
 													:delete-jus-modal {:show? false :jusid nil}}))
 
@@ -31,7 +32,14 @@
 	 :4 "IndianRed"
 	 :5 "LimeGreen"
 	 :6 "Olive"
-	 :7 "#B5D113"})
+	 :7 "GoldenRod"
+	 :8 "IndianRed"
+	 :9 "LimeGreen"
+	 :10 "Olive"
+	 :11 "GoldenRod"
+	 :12 "IndianRed"
+	 :13 "LimeGreen"
+	 :14 "Olive"})
 
 
 (defn columns [col-widths]

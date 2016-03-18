@@ -12,7 +12,7 @@
             [jus.utils :refer [panel-title title2 args-table material-design-hyperlink github-hyperlink status-text]]
             [re-com.popover :refer [popover-tooltip]]
             [jus.data-table :refer [data-table table-state nova-naredba-atom colors delete-dialog-template add-nova-naredba-dialog-template
-                                    cljs-ajax-upload-file edit-nova-naredba-dialog-template jus-data]])
+                                    cljs-ajax-upload-file edit-nova-naredba-dialog-template jus-data path]])
   (:import [goog.events EventType]))
 
 
@@ -32,7 +32,7 @@
     (loop [childs first-level-childs
            all-childs []]
       (if (not-empty childs)
-        (recur (mapv :Child (set (flatten (doall (for [id childs] (filterv #(= id (:Parent %)) veza)))))) (into (set all-childs)   childs))
+        (recur (mapv :Child (set (flatten (doall (for [id childs] (filterv #(= id (:Parent %)) veza)))))) (into (set all-childs) childs))
         all-childs))))
 
 (defn is-child? [id child] (some #{child} (all-childs id)))
@@ -57,9 +57,9 @@
                         :error-handler #(js/alert (str "error: " %))}))
 
 (defn alow-new-veza []
-  (let [path (r/cursor table-state [:path])]
-    (if (not-empty @path)
-      (let [lock (:Locked (first (filterv #(= (:JUSId %) (val (last @path))) (:data @jus-data))))]
+  (let [path @path]
+    (if (not-empty path)
+      (let [lock (:Locked (first (filterv #(= (:JUSId %) (val (last path))) (:data @jus-data))))]
         (if (= lock 0) true false)))))
 
 (defn init-veza [& opt]
@@ -72,7 +72,7 @@
 (defn current-parent-child [& id]
   (let [local-state @table-state
         choice (:choice @showing)
-        path (:path local-state)
+        path @path
         child (if id (first id) choice)
         parent (or ((clojure.set/map-invert (:path local-state)) child) ((keyword (str (count path))) path))]
     [parent child]))
@@ -82,7 +82,7 @@
   (let [id (:id row)
         criteria {:JUSId id}
         data (if (= 1 (:ok row)) 0 1)
-        parent ((:level row) (:path @table-state))]
+        parent ((:level row) @path)]
     (GET "/jus/update" {:params        {:filter criteria :field-data [{:Locked data}] :like false}
                         :handler       (fn [x] (do (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Locked] data y))))
                                                    (swap! count-veze update-in [parent :locked]
@@ -93,7 +93,7 @@
   (let [id (:id row)
         criteria {:JUSId id}
         data (if (= 1 (:fali row)) 0 1)
-        parent ((:level row) (:path @table-state))]
+        parent ((:level row) @path)]
     (GET "/jus/update" {:params        {:filter criteria :field-data [{:Fali data}] :like false}
                         :handler       (fn [x] (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Fali] data y))))
                                          )
@@ -108,18 +108,17 @@
 
 
 
+
 (defn exist-veza [& id]
   (let [[parent child] (if id (current-parent-child (first id)) (current-parent-child))]
     (or (not-empty (filterv #(= % {:Parent parent :Child child}) (:veza @table-state)))
         (= parent child)
-        ;(is-child? child parent)
+        (is-child? child parent)
+        (some #{child} (vals @path))
         )))
 
-
-
-
 (defn reset-path [row]
-  (swap! table-state update-in [:path] (fn [x] (into  (sorted-map-by #(< (js/parseInt (name %1)) (js/parseInt (name %2)))) (take-while #(not= (next-level (:level row)) (key %)) x)))))
+  (reset! path (into (sorted-map-by #(< (js/parseInt (name %1)) (js/parseInt (name %2)))) (take-while #(not= (next-level (:level row)) (key %)) @path))))
 
 (defn add-veza [& id]
   (let [jus-id (if id (first id) (:choice @showing))
@@ -146,7 +145,7 @@
                               :error-handler #(js/alert (str "error: " %))})
         (swap! count-veze update-in [level]
                (fn [x] {:total (dec (:total x)) :locked (- (:locked x) (:Locked old)) :childs (remove #{child} (:childs x))}))
-        (reset-path {:level ((clojure.set/map-invert (:path local-state)) level)}))))
+        (reset-path {:level ((clojure.set/map-invert @path) level)}))))
 
 (defn delete-dialog []
   (let [process-ok (fn [event]
@@ -278,7 +277,7 @@
   (swap! table-state assoc-in [:nova-naredba-modal] {:edit? true}))
 
 (defn delete-veza-event [level row]
-  (swap! table-state assoc-in [:delete-modal] {:show? true :level (level (:path @table-state)) :child (:id row)}))
+  (swap! table-state assoc-in [:delete-modal] {:show? true :level (level @path) :child (:id row)}))
 
 (defn delete-jus-event [_ row]
   (swap! table-state assoc-in [:delete-jus-modal] {:show? true :jusid (:id row)}))
@@ -287,8 +286,9 @@
   (.open js/window (str "pdf/" (:link-n row))))
 
 (defn set-path [row]
-  (swap! table-state update-in [:path] (fn [x] (-> (into (sorted-map-by #(< (js/parseInt (name %1)) (js/parseInt (name %2)))) (take-while #(not= (next-level (:level row)) (key %)) x))
-                                                   (assoc (next-level (:level row)) (:id row))))))
+  (reset! path  (-> (into (sorted-map-by #(< (js/parseInt (name %1)) (js/parseInt (name %2))))
+                                                         (take-while #(not= (next-level (:level row)) (key %)) @path))
+                                                   (assoc (next-level (:level row)) (:id row)))))
 
 (defn icon-label [icon tip]
   (let [showing? (atom nil)
@@ -316,7 +316,8 @@
                    (reduce + count-all-childs (remove nil? (map second childs-data)))
                    (reduce + count-ok-childs (map last childs-data))))
           [count-all-childs count-ok-childs first-level-childs-count first-level-ok-count])))
-    [0 0 0 0]))
+    [0 0 0 0])
+  )
 
 
 (defn disable-del [& type]
@@ -368,7 +369,7 @@
 
 (defn find-selected [JUSId lev]
   (let [next-lev (next-level lev)
-        path (:path @table-state)]
+        path @path]
     (if (and (not-empty path) next-lev)
       (if (= JUSId (next-lev path))
         true nil) nil)))
@@ -445,7 +446,7 @@
 
 
 (defn rows-level [level]
-  (let [parent (level (:path @table-state))
+  (let [parent (level @path)
         criteria (->> (:veza @table-state)
                       (filterv #(= parent (:Parent %)))
                       (mapv :Child)
@@ -464,57 +465,68 @@
   )
 
 (defn opis-level [level]
-  (let [jus (first (filterv #(= (:JUSId %) (level (:path @table-state))) (:data @jus-data)))]
+  (let [jus (first (filterv #(= (:JUSId %) (level @path)) (:data @jus-data)))]
     (if (> (:Naredba jus) 0)
       [0 (:JUSopis jus)]
       [1 (:JUSId jus)])))
 
+(def show-level (atom nil))
 
 (defn data-tables-level [level path screen]
   (let [alow-new-veza (alow-new-veza)
-        col-widths-types-jus (col-widths-types-jus alow-new-veza)]
+        col-widths-types-jus (col-widths-types-jus alow-new-veza)
+        path-count (count path)
+        level-int (js/parseInt (name level))]
     ^{:key level}
     [v-box
      :width "100%"
      :align :center
      :children
      [[title :level :level3 :style {:font-weight "bold" :font-family "Courier New" :align-self "center" :color ((prev-level level) colors)}
+       :attr {:on-click #(reset-path {:level level})}
        :label (if (= (first (opis-level level)) 0) (str (second (opis-level level)) " veže:")
                                                    (str "JUS standard " (second (opis-level level)) " veže:"))]
-      [scroller
-       ;:size "flex-shrink"
-       :margin "10px"
-       :v-scroll :auto
-       :height "100%"
-       :scroll :auto
-       :align-self :center
-       :width "95%"
-       :max-width "1100px"
-       :min-width "800px"
-       :max-height "270px"
-       :min-height "100px"
-       :child [data-table (rows-jus (rows-level level) screen) col-widths-types-jus
-               level]]
-      [gap :size "30px"]]]))
+      (if (< (- level-int 1) path-count (+ level-int 2))
+        [scroller
+         ;:size "flex-shrink"
+         :margin "5px"
+         :style {:margin-bottom "30px"}
+         :v-scroll :auto
+         :height "100%"
+         :scroll :auto
+         :align-self :center
+         :width "95%"
+         :max-width "1100px"
+         :min-width "800px"
+         :max-height "270px"
+         :min-height "100px"
+         :child [data-table (rows-jus (rows-level level) screen) col-widths-types-jus
+                 level]]
+        [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:1 colors)}])
+      ;[gap :size "30px"]
+      ]]))
 
-(def show-level (atom nil))
+
 
 
 (defn entry-point []
   (r/create-class
-    {:component-did-mount  #(do (events/listen js/window EventType.RESIZE (resize)))
-     :component-did-update #(do ((resize)) (splitter-props))
+    {
+     ;:component-did-mount  #(do (events/listen js/window EventType.RESIZE (resize)))
+     ;:component-did-update #(do ((resize)) (splitter-props))
      :reagent-render       (fn []
-                             (let [path @(r/cursor table-state [:path])
+                             (let [path @path
                                    path-count (count path)
                                    jus-data (r/cursor jus-data [:data])
                                    jus-all-data @(r/cursor jus-all-data [:data])
-                                   screen @(r/cursor table-state [:table-size])
+                                   ;screen @(r/cursor table-state [:table-size])
+                                   screen 80
                                    choice (:choice @showing)
                                    prefix (:prefix @showing)
                                    rows-naredbe (rows-naredbe (filter #(= (:Naredba %) 1) @jus-data) screen)
                                    alow-new-veza (alow-new-veza)
                                    v-height (* (.-innerHeight js/window) 0.8)]
+
                                (if (not-empty rows-naredbe)
                                  [:div
                                   [v-box
@@ -539,7 +551,7 @@
                                                                   :on-click      #(reset-path {:level :1})
                                                                   }
                                                            :label "Naredbe vezane za evropske direktive"]
-                                                          (if (or (< path-count 2) (= @show-level :0))
+                                                          (if (< path-count 2)
                                                             [v-box
                                                              :gap "2px"
                                                              :align :center
@@ -573,7 +585,7 @@
                                                                                        :on-mouse-out  #(reset! show-level nil)
                                                                                        :on-click      #(reset-path {:level :2})}
                                                                                 :label (str (second (opis-level :1)) " povlači:")])
-                                                          (if (or (< 0 path-count 3) (= @show-level :1))
+                                                          (if (< 0 path-count 3)
                                                             [v-box
                                                              :gap "2px"
                                                              :align :center
@@ -607,7 +619,7 @@
                                                                                        :on-mouse-out  #(reset! show-level nil)
                                                                                        :on-click      #(reset-path {:level :3})}
                                                                                 :label (str (second (opis-level :2)) " povlači:")])
-                                                          (if (or (< 1 path-count 4) (= @show-level :2))
+                                                          (if (< 1 path-count 4)
                                                             [v-box
                                                              :gap "2px"
                                                              :align :center
