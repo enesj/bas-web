@@ -95,8 +95,8 @@
         data (if (= 1 (:fali row)) 0 1)
         parent ((:level row) @path)]
     (GET "/jus/update" {:params        {:filter criteria :field-data [{:Fali data}] :like false}
-                        :handler       (fn [x] (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Fali] data y))))
-                                         )
+                        :handler       (fn [x] (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Fali] data y)))))
+
                         :error-handler #(js/alert (str "error: " %))})))
 
 (defn obavezan-jus [row data]
@@ -114,8 +114,8 @@
     (or (not-empty (filterv #(= % {:Parent parent :Child child}) (:veza @table-state)))
         (= parent child)
         (is-child? child parent)
-        (some #{child} (vals @path))
-        )))
+        (some #{child} (vals @path)))))
+
 
 (defn reset-path [row]
   (reset! path (into (sorted-map-by #(< (js/parseInt (name %1)) (js/parseInt (name %2)))) (take-while #(not= (next-level (:level row)) (key %)) @path))))
@@ -286,9 +286,9 @@
   (.open js/window (str "pdf/" (:link-n row))))
 
 (defn set-path [row]
-  (reset! path  (-> (into (sorted-map-by #(< (js/parseInt (name %1)) (js/parseInt (name %2))))
-                                                         (take-while #(not= (next-level (:level row)) (key %)) @path))
-                                                   (assoc (next-level (:level row)) (:id row)))))
+  (reset! path (-> (into (sorted-map-by #(< (js/parseInt (name %1)) (js/parseInt (name %2))))
+                         (take-while #(not= (next-level (:level row)) (key %)) @path))
+                   (assoc (next-level (:level row)) (:id row)))))
 
 (defn icon-label [icon tip]
   (let [showing? (atom nil)
@@ -316,8 +316,8 @@
                    (reduce + count-all-childs (remove nil? (map second childs-data)))
                    (reduce + count-ok-childs (map last childs-data))))
           [count-all-childs count-ok-childs first-level-childs-count first-level-ok-count])))
-    [0 0 0 0])
-  )
+    [0 0 0 0]))
+
 
 
 (defn disable-del [& type]
@@ -414,9 +414,9 @@
                                                                                 :selected    (find-selected JUSId (:level data))
                                                                                 ;:click     set-path
                                                                                 :level       (:level data)
-                                                                                :tooltip     {:veze (nth count-veza 2) :gotovo (last count-veza) :naslov JUSopis :ok Napomena}
-                                                                                }} nil
-                                                                        ))) (:data data))))
+                                                                                :tooltip     {:veze (nth count-veza 2) :gotovo (last count-veza) :naslov JUSopis :ok Napomena}}}
+                                                                        nil)))
+                                                            (:data data))))
 
 (defn rows-jus [data screen] (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis JUSgodina Locked Naredba Mandatory Fali]} x
                                                           count-veza (count-veza JUSId)]
@@ -432,8 +432,8 @@
                                                                 :selected (find-selected JUSId (:level data))
                                                                 ;:click     set-path
                                                                 :level    (:level data)
-                                                                :tooltip  {:veze (nth count-veza 2) :gotovo (last count-veza) :opis JUSopis}
-                                                                }} nil))) (:data data))))
+                                                                :tooltip  {:veze (nth count-veza 2) :gotovo (last count-veza) :opis JUSopis}}}
+                                                        nil))) (:data data))))
 
 (defn dropdown-data [data criteria]
   (into [] (filterv #(= criteria (:prefix %))
@@ -457,12 +457,12 @@
 (defn resize []
   (fn [evt]
     (if-let [table (.item (.getElementsByClassName (h/get-elem "app") "rc-v-box display-flex rc-div-table") 1)]
-      (swap! table-state assoc-in [:table-size] (/ (.-offsetWidth table) 12))
-      )))
+      (swap! table-state assoc-in [:table-size] (/ (.-offsetWidth table) 12)))))
+
 
 (defn splitter-props []
-  nil
-  )
+  nil)
+
 
 (defn opis-level [level]
   (let [jus (first (filterv #(= (:JUSId %) (level @path)) (:data @jus-data)))]
@@ -502,9 +502,9 @@
          :min-height "100px"
          :child [data-table (rows-jus (rows-level level) screen) col-widths-types-jus
                  level]]
-        [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:1 colors)}])
-      ;[gap :size "30px"]
-      ]]))
+        [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:1 colors)}])]]))
+;[gap :size "30px"]
+
 
 
 
@@ -514,234 +514,234 @@
     {
      ;:component-did-mount  #(do (events/listen js/window EventType.RESIZE (resize)))
      ;:component-did-update #(do ((resize)) (splitter-props))
-     :reagent-render       (fn []
-                             (let [path @path
-                                   path-count (count path)
-                                   jus-data (r/cursor jus-data [:data])
-                                   jus-all-data @(r/cursor jus-all-data [:data])
-                                   ;screen @(r/cursor table-state [:table-size])
-                                   screen 80
-                                   choice (:choice @showing)
-                                   prefix (:prefix @showing)
-                                   rows-naredbe (rows-naredbe (filter #(= (:Naredba %) 1) @jus-data) screen)
-                                   alow-new-veza (alow-new-veza)
-                                   v-height (* (.-innerHeight js/window) 0.8)]
+     :reagent-render (fn []
+                       (let [path @path
+                             path-count (count path)
+                             jus-data (r/cursor jus-data [:data])
+                             jus-all-data @(r/cursor jus-all-data [:data])
+                             ;screen @(r/cursor table-state [:table-size])
+                             screen 80
+                             choice (:choice @showing)
+                             prefix (:prefix @showing)
+                             rows-naredbe (rows-naredbe (filter #(= (:Naredba %) 1) @jus-data) screen)
+                             alow-new-veza (alow-new-veza)
+                             v-height (* (.-innerHeight js/window) 0.8)]
 
-                               (if (not-empty rows-naredbe)
-                                 [:div
-                                  [v-box
-                                   :align :center
-                                   :gap "2px"
-                                   :width "100%"
-                                   :height "100%"
-                                   :children [[delete-dialog]
-                                              [add-nova-naredba-dialog]
-                                              [delete-jus-dialog]
-                                              [edit-nova-naredba-dialog]
-                                              [title :level :level2 :style {:font-weight "bold" :color "#555657"} :label "Veza usvojenih evropskih direktiva i JUS standarda "]
-                                              [line :size "3px" :color "lightgray" :style {:width "90%" :align-self "center"}]
-                                              [v-box
-                                               :gap "2px"
-                                               :align :center
-                                               :width "100%"
-                                               :height "auto"
-                                               :children [[title :level :level3 :style {:font-weight "bold" :font-family "Courier New"}
-                                                           :attr {:on-mouse-over #(reset! show-level :0)
-                                                                  :on-mouse-out  #(reset! show-level nil)
-                                                                  :on-click      #(reset-path {:level :1})
-                                                                  }
-                                                           :label "Naredbe vezane za evropske direktive"]
-                                                          (if (< path-count 2)
-                                                            [v-box
-                                                             :gap "2px"
-                                                             :align :center
-                                                             :width "100%"
-                                                             :height "auto"
-                                                             :children
-                                                             [[scroller
-                                                               :style {:margin-left "auto" :margin-right "auto"}
-                                                               :v-scroll :auto
-                                                               :height "100%"
-                                                               :scroll :auto
-                                                               :width "85%"
-                                                               :max-width "1100px"
-                                                               :min-width "800px"
-                                                               :max-height "270px"
-                                                               ;:min-height "200px"
-                                                               :child [data-table rows-naredbe col-widths-types-naredbe :0]]
-                                                              [button
-                                                               :label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
-                                                               :on-click #(add-nova-naredba-event 1)
-                                                               :disabled? (not= (count path) 0)
-                                                               :style {:color            "white"
-                                                                       :font-size        "14px"
-                                                                       :background-color (:0 colors)
-                                                                       :font-weight      "100"
-                                                                       :border           "none"
-                                                                       :padding          "7px 12px"}]]]
-                                                            [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:0 colors)}])
-                                                          (if (> path-count 0) [title :level :level3 :style {:font-weight "bold" :align-self "center" :font-family "Courier New" :color (:0 colors)}
-                                                                                :attr {:on-mouse-over #(reset! show-level :1)
-                                                                                       :on-mouse-out  #(reset! show-level nil)
-                                                                                       :on-click      #(reset-path {:level :2})}
-                                                                                :label (str (second (opis-level :1)) " povlači:")])
-                                                          (if (< 0 path-count 3)
-                                                            [v-box
-                                                             :gap "2px"
-                                                             :align :center
-                                                             :width "100%"
-                                                             :height "auto"
-                                                             :children
-                                                             [[scroller
-                                                               :v-scroll :auto
-                                                               :height "100%"
-                                                               :scroll :auto
-                                                               :width "99%"
-                                                               :max-width "1100px"
-                                                               :min-width "800px"
-                                                               :max-height "270px"
-                                                               :child
-                                                               (if (not-empty path)
-                                                                 [data-table (rows-naredbe-stare (rows-level :1) screen 2) col-widths-types-naredbe-stare :1]
-                                                                 [:div ""])]
-                                                              [button
-                                                               :label [:span "Stara naredba I " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
-                                                               :on-click #(add-nova-naredba-event 2)
-                                                               :disabled? (not= (count path) 1)
-                                                               :style {:color            "white"
-                                                                       :font-size        "14px"
-                                                                       :background-color (:1 colors)
-                                                                       :border           "none"
-                                                                       :padding          "7px 12px"}]]]
-                                                            [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:1 colors)}])
-                                                          (if (> path-count 1) [title :level :level3 :style {:font-weight "bold" :align-self "center" :font-family "Courier New" :color (:1 colors)}
-                                                                                :attr {:on-mouse-over #(reset! show-level :2)
-                                                                                       :on-mouse-out  #(reset! show-level nil)
-                                                                                       :on-click      #(reset-path {:level :3})}
-                                                                                :label (str (second (opis-level :2)) " povlači:")])
-                                                          (if (< 1 path-count 4)
-                                                            [v-box
-                                                             :gap "2px"
-                                                             :align :center
-                                                             :width "100%"
-                                                             :height "auto"
-                                                             :children
-                                                             [
-                                                              [scroller
-                                                               :v-scroll :auto
-                                                               :height "100%"
-                                                               :scroll :auto
-                                                               :width "99%"
-                                                               :max-width "1100px"
-                                                               :min-width "800px"
-                                                               :max-height "270px"
-                                                               :child
-                                                               (if (not-empty path)
-                                                                 [data-table (rows-naredbe-stare (rows-level :2) screen 3) col-widths-types-naredbe-stare :2]
-                                                                 [:div ""])]
-                                                              [button
-                                                               :label [:span "Stara naredba II " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
-                                                               :on-click #(add-nova-naredba-event 3)
-                                                               :disabled? (not= (count path) 2)
-                                                               :style {:color            "white"
-                                                                       :font-size        "14px"
-                                                                       :background-color (:2 colors)
-                                                                       :border           "none"
-                                                                       :padding          "7px 12px"}]]]
-                                                            [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:2 colors)}])
-                                                          (if (> path-count 1)
-                                                            [scroller
-                                                             :style {:margin-left "auto" :margin-right "auto" :border-style "solid" :border-color "lightgray" :border-width "0px"}
-                                                             :v-scroll :auto
-                                                             :height "100%"
-                                                             :scroll :auto
-                                                             :width "100%"
-                                                             :max-width "1100px"
-                                                             :min-width "400px"
-                                                             :max-height (str (* v-height 0.8) "px")
-                                                             :child [v-box
-                                                                     :width "100%"
-                                                                     :children [(doall (for [level-key (keys (rest path))] (data-tables-level level-key path screen)))
-                                                                                (if (and (nil? choice) alow-new-veza (not-empty (rest path)))
-                                                                                  [box :child "Dodaj JUS standard u listu veza."
-                                                                                   :padding "6px"
-                                                                                   :style {:margin-top       "5px"
-                                                                                           :margin-bottom    "20px"
-                                                                                           :color            "#333"
-                                                                                           :background-color (:3 colors)
-                                                                                           :border-top       "none"
-                                                                                           :border-right     "none"
-                                                                                           :border-bottom    "none"
-                                                                                           :border-left      "4px solid #B5c113"
-                                                                                           :border-radius    "0px"}]
-                                                                                  [box
-                                                                                   :align-self :center
-                                                                                   :margin "5px"
-                                                                                   :child (str choice " - " (:JUSopis (first (filterv #(= choice (:JUSId %)) jus-all-data))))])
-                                                                                (if (not-empty path)
-                                                                                  [h-box
-                                                                                   :justify :center
-                                                                                   :children [
-                                                                                              [single-dropdown
-                                                                                               :choices (dropdown-prefix jus-all-data)
-                                                                                               :model prefix
-                                                                                               :width "80px"
-                                                                                               :max-height "100px"
-                                                                                               :filter-box? true
-                                                                                               :on-change
-                                                                                               #(do (swap! showing assoc-in [:choice] nil) (swap! showing assoc-in [:prefix] %))]
-                                                                                              [gap :size "4px"]
-                                                                                              [single-dropdown
-                                                                                               :choices (dropdown-data jus-all-data prefix)
-                                                                                               :model choice
-                                                                                               :width "150px"
-                                                                                               :max-height "100px"
-                                                                                               :filter-box? true
-                                                                                               :on-change
-                                                                                               #(swap! showing assoc-in [:choice] %)]
-                                                                                              [gap :size "4px"]
-                                                                                              [button
-                                                                                               :label [:span "JUS " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
-                                                                                               :disabled? (or (not choice) (exist-veza) (not alow-new-veza) (< (count path) 2))
-                                                                                               :on-click #(add-veza)
-                                                                                               :style {:color            "white"
-                                                                                                       :font-size        "14px"
-                                                                                                       :background-color (:3 colors)
-                                                                                                       :font-weight      "100"
-                                                                                                       :border           "none"
-                                                                                                       :padding          "7px 12px"}]]])
-                                                                                [:div
-                                                                                 (if (exist-veza)
-                                                                                   [alert-box
-                                                                                    :style {:margin-top       "20px"
-                                                                                            :color            "#333"
-                                                                                            :background-color "rgba(255, 0, 0, 0.1)"
-                                                                                            :border-top       "none"
-                                                                                            :border-right     "none"
-                                                                                            :border-bottom    "none"
-                                                                                            :border-left      "4px solid rgba(255, 0, 0, 0.8)"
-                                                                                            :border-radius    "0px"}
-                                                                                    ;:style {:margin-top "20px"}
-                                                                                    :alert-type :danger
-                                                                                    :body "Ovaj JUS standard je već unesen!"
-                                                                                    :padding "6px"
-                                                                                    :closeable? true
-                                                                                    :on-close #(swap! showing assoc-in [:choice] nil)])
-                                                                                 (if (and (not alow-new-veza) (not-empty path))
-                                                                                   [alert-box
-                                                                                    :style {:margin-top "20px"}
-                                                                                    :alert-type :danger
-                                                                                    :body "Zaključan je unos novih veza za ovaj standard!"
-                                                                                    :padding "6px"
-                                                                                    :closeable? false
-                                                                                    :on-close #()])]
-                                                                                [gap :size "220px"]]]])
-                                                          [line
-                                                           :size "3px"
-                                                           :color "#555657"
-                                                           :style {:width "90%" :align-self "center"}]
-                                                          [gap :size "20px"]]]]]]
-                                 [:div "Loading"])))}))
+                         (if (not-empty rows-naredbe)
+                           [:div
+                            [v-box
+                             :align :center
+                             :gap "2px"
+                             :width "100%"
+                             :height "100%"
+                             :children [[delete-dialog]
+                                        [add-nova-naredba-dialog]
+                                        [delete-jus-dialog]
+                                        [edit-nova-naredba-dialog]
+                                        [title :level :level2 :style {:font-weight "bold" :color "#555657"} :label "Veza usvojenih evropskih direktiva i JUS standarda "]
+                                        [line :size "3px" :color "lightgray" :style {:width "90%" :align-self "center"}]
+                                        [v-box
+                                         :gap "2px"
+                                         :align :center
+                                         :width "100%"
+                                         :height "auto"
+                                         :children [[title :level :level3 :style {:font-weight "bold" :font-family "Courier New"}
+                                                     :attr {:on-mouse-over #(reset! show-level :0)
+                                                            :on-mouse-out  #(reset! show-level nil)
+                                                            :on-click      #(reset-path {:level :1})}
+
+                                                     :label "Naredbe vezane za evropske direktive"]
+                                                    (if (< path-count 2)
+                                                      [v-box
+                                                       :gap "2px"
+                                                       :align :center
+                                                       :width "100%"
+                                                       :height "auto"
+                                                       :children
+                                                       [[scroller
+                                                         :style {:margin-left "auto" :margin-right "auto"}
+                                                         :v-scroll :auto
+                                                         :height "100%"
+                                                         :scroll :auto
+                                                         :width "85%"
+                                                         :max-width "1100px"
+                                                         :min-width "800px"
+                                                         :max-height "270px"
+                                                         ;:min-height "200px"
+                                                         :child [data-table rows-naredbe col-widths-types-naredbe :0]]
+                                                        [button
+                                                         :label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
+                                                         :on-click #(add-nova-naredba-event 1)
+                                                         :disabled? (not= (count path) 0)
+                                                         :style {:color            "white"
+                                                                 :font-size        "14px"
+                                                                 :background-color (:0 colors)
+                                                                 :font-weight      "100"
+                                                                 :border           "none"
+                                                                 :padding          "7px 12px"}]]]
+                                                      [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:0 colors)}])
+                                                    (if (> path-count 0) [title :level :level3 :style {:font-weight "bold" :align-self "center" :font-family "Courier New" :color (:0 colors)}
+                                                                          :attr {:on-mouse-over #(reset! show-level :1)
+                                                                                 :on-mouse-out  #(reset! show-level nil)
+                                                                                 :on-click      #(reset-path {:level :2})}
+                                                                          :label (str (second (opis-level :1)) " povlači:")])
+                                                    (if (< 0 path-count 3)
+                                                      [v-box
+                                                       :gap "2px"
+                                                       :align :center
+                                                       :width "100%"
+                                                       :height "auto"
+                                                       :children
+                                                       [[scroller
+                                                         :v-scroll :auto
+                                                         :height "100%"
+                                                         :scroll :auto
+                                                         :width "99%"
+                                                         :max-width "1100px"
+                                                         :min-width "800px"
+                                                         :max-height "270px"
+                                                         :child
+                                                         (if (not-empty path)
+                                                           [data-table (rows-naredbe-stare (rows-level :1) screen 2) col-widths-types-naredbe-stare :1]
+                                                           [:div ""])]
+                                                        [button
+                                                         :label [:span "Stara naredba I " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
+                                                         :on-click #(add-nova-naredba-event 2)
+                                                         :disabled? (not= (count path) 1)
+                                                         :style {:color            "white"
+                                                                 :font-size        "14px"
+                                                                 :background-color (:1 colors)
+                                                                 :border           "none"
+                                                                 :padding          "7px 12px"}]]]
+                                                      [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:1 colors)}])
+                                                    (if (> path-count 1) [title :level :level3 :style {:font-weight "bold" :align-self "center" :font-family "Courier New" :color (:1 colors)}
+                                                                          :attr {:on-mouse-over #(reset! show-level :2)
+                                                                                 :on-mouse-out  #(reset! show-level nil)
+                                                                                 :on-click      #(reset-path {:level :3})}
+                                                                          :label (str (second (opis-level :2)) " povlači:")])
+                                                    (if (< 1 path-count 4)
+                                                      [v-box
+                                                       :gap "2px"
+                                                       :align :center
+                                                       :width "100%"
+                                                       :height "auto"
+                                                       :children
+                                                       [
+                                                        [scroller
+                                                         :v-scroll :auto
+                                                         :height "100%"
+                                                         :scroll :auto
+                                                         :width "99%"
+                                                         :max-width "1100px"
+                                                         :min-width "800px"
+                                                         :max-height "270px"
+                                                         :child
+                                                         (if (not-empty path)
+                                                           [data-table (rows-naredbe-stare (rows-level :2) screen 3) col-widths-types-naredbe-stare :2]
+                                                           [:div ""])]
+                                                        [button
+                                                         :label [:span "Stara naredba II " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
+                                                         :on-click #(add-nova-naredba-event 3)
+                                                         :disabled? (not= (count path) 2)
+                                                         :style {:color            "white"
+                                                                 :font-size        "14px"
+                                                                 :background-color (:2 colors)
+                                                                 :border           "none"
+                                                                 :padding          "7px 12px"}]]]
+                                                      [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:2 colors)}])
+                                                    (if (> path-count 1)
+                                                      [scroller
+                                                       :style {:margin-left "auto" :margin-right "auto" :border-style "solid" :border-color "lightgray" :border-width "0px"}
+                                                       :v-scroll :auto
+                                                       :height "100%"
+                                                       :scroll :auto
+                                                       :width "100%"
+                                                       :max-width "1100px"
+                                                       :min-width "400px"
+                                                       :max-height (str (* v-height 0.8) "px")
+                                                       :child [v-box
+                                                               :width "100%"
+                                                               :children [(doall (for [level-key (keys (rest path))] (data-tables-level level-key path screen)))
+                                                                          (if (and (nil? choice) alow-new-veza (not-empty (rest path)))
+                                                                            [box :child "Dodaj JUS standard u listu veza."
+                                                                             :padding "6px"
+                                                                             :style {:margin-top       "5px"
+                                                                                     :margin-bottom    "20px"
+                                                                                     :color            "#333"
+                                                                                     :background-color (:3 colors)
+                                                                                     :border-top       "none"
+                                                                                     :border-right     "none"
+                                                                                     :border-bottom    "none"
+                                                                                     :border-left      "4px solid #B5c113"
+                                                                                     :border-radius    "0px"}]
+                                                                            [box
+                                                                             :align-self :center
+                                                                             :margin "5px"
+                                                                             :child (str choice " - " (:JUSopis (first (filterv #(= choice (:JUSId %)) jus-all-data))))])
+                                                                          (if (not-empty path)
+                                                                            [h-box
+                                                                             :justify :center
+                                                                             :children [
+                                                                                        [single-dropdown
+                                                                                         :choices (dropdown-prefix jus-all-data)
+                                                                                         :model prefix
+                                                                                         :width "80px"
+                                                                                         :max-height "100px"
+                                                                                         :filter-box? true
+                                                                                         :on-change
+                                                                                         #(do (swap! showing assoc-in [:choice] nil) (swap! showing assoc-in [:prefix] %))]
+                                                                                        [gap :size "4px"]
+                                                                                        [single-dropdown
+                                                                                         :choices (dropdown-data jus-all-data prefix)
+                                                                                         :model choice
+                                                                                         :width "150px"
+                                                                                         :max-height "100px"
+                                                                                         :filter-box? true
+                                                                                         :on-change
+                                                                                         #(swap! showing assoc-in [:choice] %)]
+                                                                                        [gap :size "4px"]
+                                                                                        [button
+                                                                                         :label [:span "JUS " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
+                                                                                         :disabled? (or (not choice) (exist-veza) (not alow-new-veza) (< (count path) 2))
+                                                                                         :on-click #(add-veza)
+                                                                                         :style {:color            "white"
+                                                                                                 :font-size        "14px"
+                                                                                                 :background-color (:3 colors)
+                                                                                                 :font-weight      "100"
+                                                                                                 :border           "none"
+                                                                                                 :padding          "7px 12px"}]]])
+                                                                          [:div
+                                                                           (if (exist-veza)
+                                                                             [alert-box
+                                                                              :style {:margin-top       "20px"
+                                                                                      :color            "#333"
+                                                                                      :background-color "rgba(255, 0, 0, 0.1)"
+                                                                                      :border-top       "none"
+                                                                                      :border-right     "none"
+                                                                                      :border-bottom    "none"
+                                                                                      :border-left      "4px solid rgba(255, 0, 0, 0.8)"
+                                                                                      :border-radius    "0px"}
+                                                                              ;:style {:margin-top "20px"}
+                                                                              :alert-type :danger
+                                                                              :body "Ovaj JUS standard je već unesen!"
+                                                                              :padding "6px"
+                                                                              :closeable? true
+                                                                              :on-close #(swap! showing assoc-in [:choice] nil)])
+                                                                           (if (and (not alow-new-veza) (not-empty path))
+                                                                             [alert-box
+                                                                              :style {:margin-top "20px"}
+                                                                              :alert-type :danger
+                                                                              :body "Zaključan je unos novih veza za ovaj standard!"
+                                                                              :padding "6px"
+                                                                              :closeable? false
+                                                                              :on-close #()])]
+                                                                          [gap :size "220px"]]]])
+                                                    [line
+                                                     :size "3px"
+                                                     :color "#555657"
+                                                     :style {:width "90%" :align-self "center"}]
+                                                    [gap :size "20px"]]]]]]
+                           [:div "Loading"])))}))
 
 
 (defn ^:export main []
