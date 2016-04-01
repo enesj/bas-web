@@ -16,7 +16,7 @@
   (:import [goog.events EventType]))
 
 
-
+(def temp-path (atom nil))
 
 (def jus-all-data (atom {:data nil}))
 
@@ -45,7 +45,7 @@
   (keyword (str (dec (js/parseInt (name level))))))
 
 (defn count-veze-fn []
-  (GET "/jus/count-veze" {:handler       #(reset! count-veze %)
+  (GET "/jus/count-veze" {:handler       #(do (reset! count-veze (first %)) (swap! jus-data assoc-in [:data] (second %)) (swap! table-state assoc-in [:veza] (last %)))
                           :error-handler #(js/alert (str "error: " %))}))
 
 (defn init-jus-data []
@@ -302,7 +302,14 @@
                                                              :showing? showing?
                                                              :anchor ic-label]]))
 
-(defn count-veza [id]
+(defn count-veza-one [childs-data count-all-childs count-ok-childs]
+  [(eduction (distinct) (remove nil?) (flatten (map #(conj (first %)) childs-data)))
+  (transduce (map second) + count-all-childs childs-data)
+  (transduce (map last) + count-ok-childs childs-data)])
+
+(def count-veza-1 (memoize count-veza-one))
+
+(defn count-veza-full [id]
   (if @count-veze
     (let [first-level-count @count-veze
           first-level-childs-count (:total (first-level-count id))
@@ -311,12 +318,20 @@
              count-all-childs 0
              count-ok-childs 0]
         (if (not-empty childs)
-          (let [childs-data (for [child childs] [(:childs (first-level-count child)) (:total (first-level-count child)) (:locked (first-level-count child))])]
-            (recur (set (remove nil? (flatten (map #(conj (first %)) childs-data))))
-                   (reduce + count-all-childs (remove nil? (map second childs-data)))
-                   (reduce + count-ok-childs (map last childs-data))))
+          (let [childs-data (doall (for [child childs]
+                                     (let [current-child (first-level-count child)]
+                                     [(:childs current-child) (:total current-child) (:locked current-child)])
+                                     ))]
+
+              (let [result (count-veza-1 childs-data count-all-childs count-ok-childs)]
+                (recur (first result) (second result) (last result))
+              ))
           [count-all-childs count-ok-childs first-level-childs-count first-level-ok-count])))
     [0 0 0 0]))
+
+
+(def count-veza
+  (memoize count-veza-full ))
 
 
 
@@ -377,7 +392,7 @@
 
 (defn rows-naredbe [data screen]
   (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis Glasnik Direktiva Link-n Link-d Naredba Locked Napomena Fali]} x
-                               count-veza (count-veza JUSId)]
+                               count-veza (count-veza-full JUSId)]
                            {JUSId {:id          JUSId
                                    :naslov-full JUSopis
                                    :naslov      (h/cut-str-at JUSopis screen)
@@ -473,9 +488,7 @@
 (def show-level (atom nil))
 
 (defn data-tables-level [level path screen]
-  (let [alow-new-veza (alow-new-veza)
-        col-widths-types-jus (col-widths-types-jus alow-new-veza)
-        path-count (count path)
+  (let [path-count (count path)
         level-int (js/parseInt (name level))]
     ^{:key level}
     [v-box
@@ -500,12 +513,10 @@
          :min-width "800px"
          :max-height "270px"
          :min-height "100px"
-         :child [data-table (rows-jus (rows-level level) screen) col-widths-types-jus
+         :child [data-table (rows-jus (rows-level level) screen) (col-widths-types-jus (alow-new-veza))
                  level]]
         [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:1 colors)}])]]))
 ;[gap :size "30px"]
-
-
 
 
 
@@ -515,8 +526,8 @@
      ;:component-did-mount  #(do (events/listen js/window EventType.RESIZE (resize)))
      ;:component-did-update #(do ((resize)) (splitter-props))
      :reagent-render (fn []
-                       (let [path @path
-                             path-count (count path)
+                       (let [at-path @path
+                             path-count (count at-path)
                              jus-data (r/cursor jus-data [:data])
                              jus-all-data @(r/cursor jus-all-data [:data])
                              ;screen @(r/cursor table-state [:table-size])
@@ -538,7 +549,8 @@
                                         [add-nova-naredba-dialog]
                                         [delete-jus-dialog]
                                         [edit-nova-naredba-dialog]
-                                        [title :level :level2 :style {:font-weight "bold" :color "#555657"} :label "Veza usvojenih evropskih direktiva i JUS standarda "]
+                                        [title :level :level2 :style {:font-weight "bold" :color "#555657"} :label "Veza usvojenih evropskih direktiva i JUS standarda "
+                                         :attr {:on-double-click #(reset! temp-path at-path)}]
                                         [line :size "3px" :color "lightgray" :style {:width "90%" :align-self "center"}]
                                         [v-box
                                          :gap "2px"
@@ -546,9 +558,10 @@
                                          :width "100%"
                                          :height "auto"
                                          :children [[title :level :level3 :style {:font-weight "bold" :font-family "Courier New"}
-                                                     :attr {:on-mouse-over #(reset! show-level :0)
-                                                            :on-mouse-out  #(reset! show-level nil)
-                                                            :on-click      #(reset-path {:level :1})}
+                                                     :attr {:on-mouse-over   #(reset! show-level :0)
+                                                            :on-mouse-out    #(reset! show-level nil)
+                                                            :on-click        #(reset-path {:level :1})
+                                                            :on-double-click #(reset! path @temp-path)}
 
                                                      :label "Naredbe vezane za evropske direktive"]
                                                     (if (< path-count 2)
@@ -572,7 +585,7 @@
                                                         [button
                                                          :label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
                                                          :on-click #(add-nova-naredba-event 1)
-                                                         :disabled? (not= (count path) 0)
+                                                         :disabled? (not= (count at-path) 0)
                                                          :style {:color            "white"
                                                                  :font-size        "14px"
                                                                  :background-color (:0 colors)
@@ -601,13 +614,13 @@
                                                          :min-width "800px"
                                                          :max-height "270px"
                                                          :child
-                                                         (if (not-empty path)
+                                                         (if (not-empty at-path)
                                                            [data-table (rows-naredbe-stare (rows-level :1) screen 2) col-widths-types-naredbe-stare :1]
                                                            [:div ""])]
                                                         [button
                                                          :label [:span "Stara naredba I " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
                                                          :on-click #(add-nova-naredba-event 2)
-                                                         :disabled? (not= (count path) 1)
+                                                         :disabled? (not= (count at-path) 1)
                                                          :style {:color            "white"
                                                                  :font-size        "14px"
                                                                  :background-color (:1 colors)
@@ -636,13 +649,13 @@
                                                          :min-width "800px"
                                                          :max-height "270px"
                                                          :child
-                                                         (if (not-empty path)
+                                                         (if (not-empty at-path)
                                                            [data-table (rows-naredbe-stare (rows-level :2) screen 3) col-widths-types-naredbe-stare :2]
                                                            [:div ""])]
                                                         [button
                                                          :label [:span "Stara naredba II " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
                                                          :on-click #(add-nova-naredba-event 3)
-                                                         :disabled? (not= (count path) 2)
+                                                         :disabled? (not= (count at-path) 2)
                                                          :style {:color            "white"
                                                                  :font-size        "14px"
                                                                  :background-color (:2 colors)
@@ -661,8 +674,8 @@
                                                        :max-height (str (* v-height 0.8) "px")
                                                        :child [v-box
                                                                :width "100%"
-                                                               :children [(doall (for [level-key (keys (rest path))] (data-tables-level level-key path screen)))
-                                                                          (if (and (nil? choice) alow-new-veza (not-empty (rest path)))
+                                                               :children [(doall (for [level-key (keys (rest at-path))] (data-tables-level level-key at-path screen)))
+                                                                          (if (and (nil? choice) alow-new-veza (not-empty (rest at-path)))
                                                                             [box :child "Dodaj JUS standard u listu veza."
                                                                              :padding "6px"
                                                                              :style {:margin-top       "5px"
@@ -678,7 +691,7 @@
                                                                              :align-self :center
                                                                              :margin "5px"
                                                                              :child (str choice " - " (:JUSopis (first (filterv #(= choice (:JUSId %)) jus-all-data))))])
-                                                                          (if (not-empty path)
+                                                                          (if (not-empty at-path)
                                                                             [h-box
                                                                              :justify :center
                                                                              :children [
@@ -702,7 +715,7 @@
                                                                                         [gap :size "4px"]
                                                                                         [button
                                                                                          :label [:span "JUS " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
-                                                                                         :disabled? (or (not choice) (exist-veza) (not alow-new-veza) (< (count path) 2))
+                                                                                         :disabled? (or (not choice) (exist-veza) (not alow-new-veza) (< (count at-path) 2))
                                                                                          :on-click #(add-veza)
                                                                                          :style {:color            "white"
                                                                                                  :font-size        "14px"
@@ -727,7 +740,7 @@
                                                                               :padding "6px"
                                                                               :closeable? true
                                                                               :on-close #(swap! showing assoc-in [:choice] nil)])
-                                                                           (if (and (not alow-new-veza) (not-empty path))
+                                                                           (if (and (not alow-new-veza) (not-empty at-path))
                                                                              [alert-box
                                                                               :style {:margin-top "20px"}
                                                                               :alert-type :danger
@@ -745,9 +758,9 @@
 
 
 (defn ^:export main []
-  (init-jus-data)
-  (init-only-jus)
+  ;(init-jus-data)
   (count-veze-fn)
+  (init-only-jus)
   (f/set-options! {:button-primary {:attrs {:style {:margin "5px"}}}})
   (r/render-component (fn [] [entry-point]) (h/get-elem "app")))
 

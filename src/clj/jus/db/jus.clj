@@ -1,7 +1,8 @@
 (ns jus.db.jus
 	(:use [com.rpl.specter :only [transform setval FIRST LAST ALL keypath filterer srange comp-paths compiled-select collect-one compiled-setval]])
-	(:require [korma.core :refer [select select* where insert delete values update set-fields defentity limit order subselect ]]
-						[korma.db :refer [h2 transaction]]
+	(:require [korma.core :refer [select select* where insert delete values update set-fields defentity limit order subselect
+																join fields modifier aggregate ]]
+						[korma.db :refer [h2 transaction ]]
 						[cheshire.core :refer [generate-string]]
 						[clojure.java.io :as io])
 	;(:import (java.util UUID))
@@ -75,21 +76,29 @@
 												:size     (or size 0)
 												:tempfile (str tempfile)})))
 
+(defn a-data []
+	(select JUS (where {:JUSId [in (subselect Veza (fields :child))]})))
+
+(defn parent-data [id]
+	(select Veza (fields :child) (where {:Parent id })  ))
+
 (defn active-data []
-(let [veza (select Veza)]
-  (vector (into (naredbe)  (flatten (doall (for [id (partition-all 300
-		(doall (into #{} (flatten (mapv vals (select Veza))))))] (filterv #((set id) (:JUSId %)) (only-jus)))))) veza)))
+  (vector (into (naredbe) (a-data)) (select Veza)))
 
 (defn count-veze []
-  (let [active-data  (active-data)
-        naredbe (naredbe)
+  (let [active-data   (active-data)
+        naredbe  (naredbe)
         jus-data  (first active-data)
         veza  (second active-data)
-        data (into naredbe jus-data)
-        ]
-    (into {} (mapv #(hash-map (first %) {:total (count (second %)) :locked (count (filterv (fn [x] (= 1 (second x))) (second %))) :childs (map first (second %)) })
+        data (into naredbe jus-data)]
+		 [(into {} (mapv #(hash-map (first %) {:total (count (second %)) :locked (count (filterv (fn [x] (= 1 (second x))) (second %))) :childs (map first (second %)) })
                    (transform [ALL LAST ALL] (fn [x] (vector x (:Locked (first (filterv #(= x (:JUSId %)) data)))))
-															 (doall (for [id (mapv :JUSId data)] [id (mapv :Child (filterv #(= id (:Parent %)) veza))])))))))
+															 (doall (for [id (mapv :JUSId data)] [id (eduction  (filter #(= id (:Parent %))) (map :Child) veza)]))))) data veza]))
+
+
+
+
+
 
 
 ;(defn get-user-by-email [email] (first (select user (where {:email email}) (limit 1))))
