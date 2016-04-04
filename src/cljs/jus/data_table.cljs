@@ -15,26 +15,26 @@
 
 (def path (r/atom nil))
 
-(def table-state (r/atom {:table-height nil :veza nil :path nil
+(def table-state (r/atom {:table-height     nil :veza nil :path nil
                           :delete-modal     {:show? false :level nil :child nil} :nova-naredba-modal {:show? false :edit? false :naslov nil :direktiva nil :link nil :file nil}
                           :delete-jus-modal {:show? false :jusid nil}}))
 
 
 (def jus-data (r/atom {:data nil}))
 
-(def nova-naredba-atom (r/atom {:jusid nil :naslov nil :direktiva nil :link nil :file nil :glasnik nil :naredba nil :X-CSRF-Token nil}))
+(def nova-naredba-atom (r/atom {:jusid nil :naslov nil :direktiva nil :link nil :file nil :glasnik nil :naredba nil :obavezan nil :X-CSRF-Token nil}))
 
 (def colors
-  {:0 "DarkBlue"
-   :1 "Green"
-   :2 "CadetBlue"
-   :3 "GoldenRod"
-   :4 "IndianRed"
-   :5 "LimeGreen"
-   :6 "Olive"
-   :7 "GoldenRod"
-   :8 "IndianRed"
-   :9 "LimeGreen"
+  {:0  "DarkBlue"
+   :1  "Green"
+   :2  "CadetBlue"
+   :3  "GoldenRod"
+   :4  "IndianRed"
+   :5  "LimeGreen"
+   :6  "Olive"
+   :7  "GoldenRod"
+   :8  "IndianRed"
+   :9  "LimeGreen"
    :10 "Olive"
    :11 "GoldenRod"
    :12 "IndianRed"
@@ -88,7 +88,56 @@
 
 (def postojeca (r/atom nil))
 
-(defn add-nova-naredba-dialog-template [process-ok process-cancel]
+(defn naredba-dialog-template [process-ok process-cancel]
+  [v-box
+   :width "700px"
+   :children [(case (:naredba @nova-naredba-atom)
+                1 (f/panel
+                    "Dodaj naredbu: "
+                    (f/form
+                      (f/text "Naslov" nova-naredba-atom [:naslov])
+                      (f/text "Glasnik" nova-naredba-atom [:glasnik])
+                      (f/text "Direktiva" nova-naredba-atom [:direktiva])
+                      (f/text "Link" nova-naredba-atom [:link])
+                      (f/text "Napomena" nova-naredba-atom [:napomena])
+                      (f/text "File" nova-naredba-atom [:file])
+                      (upload-component)
+                      (f/form-buttons
+                        (f/button-primary "Snimi" #(process-ok))
+                        (f/button-default "Cancel" #(process-cancel)))))
+                (or 2 3) (f/panel
+                           "Dodaj naredbu: "
+                           (f/form
+                             (if (:jusid @nova-naredba-atom)
+                               (f/text "Naslov" nova-naredba-atom [:naslov])
+                               (f/text {:on-blur #(reset! postojeca (naredba-exist (h/get-value "naslov")))
+                                        :style   (if @postojeca {:border-color "red"} {:border-color "lightgray"})}
+                                       "Naslov" nova-naredba-atom [:naslov]
+                                       :warn-fn #(if @postojeca "Ova naredba postoji!"))
+                               )
+                             (f/text "Glasnik" nova-naredba-atom [:glasnik])
+                             (f/text "Napomena" nova-naredba-atom [:napomena])
+                             (f/text "File" nova-naredba-atom [:file])
+                             (upload-component)
+                             (f/form-buttons
+                               (f/button-primary "Snimi" #(process-ok @postojeca))
+                               (f/button-default "Cancel" #(process-cancel)))))
+                0 (f/panel
+                    "Dodaj JUS: "
+                    (f/form
+                      (f/text "JUS" nova-naredba-atom [:jusid])
+                      (f/text "Naslov" nova-naredba-atom [:naslov])
+                      (f/text "Glasnik" nova-naredba-atom [:glasnik])
+                      (f/text "Godina" nova-naredba-atom [:godina])
+                      ;(f/text "Obavezan" nova-naredba-atom [:obavezan])
+                      (f/text "Napomena" nova-naredba-atom [:napomena])
+                      (f/form-buttons
+                        (f/button-primary "Snimi" #(process-ok))
+                        (f/button-default "Cancel" #(process-cancel)))))
+                )]])
+
+
+(defn jus-dialog-template [process-ok process-cancel]
   [v-box
    :width "700px"
    :children [(if (= (:naredba @nova-naredba-atom) 1)
@@ -99,8 +148,8 @@
                     (f/text "Glasnik" nova-naredba-atom [:glasnik])
                     (f/text "Direktiva" nova-naredba-atom [:direktiva])
                     (f/text "Link" nova-naredba-atom [:link])
-                    (f/text "Link" nova-naredba-atom [:link])
                     (f/text "Napomena" nova-naredba-atom [:napomena])
+                    (f/text "File" nova-naredba-atom [:file])
                     (upload-component)
                     (f/form-buttons
                       (f/button-primary "Snimi" #(process-ok))
@@ -108,12 +157,13 @@
                 (f/panel
                   "Dodaj naredbu: "
                   (f/form
-                    (f/text {:on-blur #(reset! postojeca (naredba-exist (h/get-value "naslov")))
-                             :style   (if @postojeca {:border-color "red"} {:border-color "lightgray"})}
-                            "Naslov" nova-naredba-atom [:naslov]
-                            :warn-fn #(do (if @postojeca "Ova naredba postoji!")))
-
-
+                    (if (= (:naredba @nova-naredba-atom) 2)
+                      (f/text "Naslov" nova-naredba-atom [:naslov])
+                      (f/text {:on-blur #(reset! postojeca (naredba-exist (h/get-value "naslov")))
+                               :style   (if @postojeca {:border-color "red"} {:border-color "lightgray"})}
+                              "Naslov" nova-naredba-atom [:naslov]
+                              :warn-fn #(if @postojeca "Ova naredba postoji!"))
+                      )
                     (f/text "Glasnik" nova-naredba-atom [:glasnik])
                     (f/text "Napomena" nova-naredba-atom [:napomena])
                     (f/text "File" nova-naredba-atom [:file])
@@ -121,38 +171,6 @@
                     (f/form-buttons
                       (f/button-primary "Snimi" #(process-ok @postojeca))
                       (f/button-default "Cancel" #(process-cancel))))))]])
-
-(defn edit-nova-naredba-dialog-template [process-ok process-cancel]
-  [v-box
-   :width "700px"
-   :children [
-              (if (= (:naredba @nova-naredba-atom) 1)
-                (f/panel
-                  "Uredi naredbu: "
-                  (f/form
-                    (f/text "Naslov" nova-naredba-atom [:naslov])
-                    (f/text "Glasnik" nova-naredba-atom [:glasnik])
-                    (f/text "Direktiva" nova-naredba-atom [:direktiva])
-                    (f/text "Link" nova-naredba-atom [:link])
-                    (f/text "Napomena" nova-naredba-atom [:napomena])
-                    (f/text "File" nova-naredba-atom [:file])
-                    (upload-component)
-                    (f/form-buttons
-                      (f/button-primary "Snimi" #(process-ok))
-                      (f/button-default "Cancel" #(process-cancel)))))
-
-                (f/panel
-                  "Dodaj naredbu: "
-                  (f/form
-                    (f/text "Naslov" nova-naredba-atom [:naslov])
-                    (f/text "Glasnik" nova-naredba-atom [:glasnik])
-                    (f/text "Napomena" nova-naredba-atom [:napomena])
-                    (f/text "File" nova-naredba-atom [:file])
-                    (upload-component)
-                    (f/form-buttons
-                      (f/button-primary "Snimi" #(process-ok))
-                      (f/button-default "Cancel" #(process-cancel))))))]])
-
 
 (defn tooltip-label [label1 label tip show-tooltip?]
   (let [label-kw (keyword label1)
@@ -174,6 +192,8 @@
 
 (defn data-row
   [row col-widths level show-tooltip?]
+
+  ;(if (= 0 (:naredba row)) (println "Ob" (:obavezan row)))
   (let [mouse-over-row? true]
     [h-box
      :class "rc-div-table-row"

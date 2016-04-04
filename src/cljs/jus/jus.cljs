@@ -11,9 +11,10 @@
             [jus.md-circle-icon-button :refer [icons example-icons]]
             [jus.utils :refer [panel-title title2 args-table material-design-hyperlink github-hyperlink status-text]]
             [re-com.popover :refer [popover-tooltip]]
-            [jus.data-table :refer [data-table table-state nova-naredba-atom colors delete-dialog-template add-nova-naredba-dialog-template
-                                    cljs-ajax-upload-file edit-nova-naredba-dialog-template jus-data path]])
+            [jus.data-table :refer [data-table table-state nova-naredba-atom colors delete-dialog-template naredba-dialog-template
+                                    cljs-ajax-upload-file jus-data path]])
   (:import [goog.events EventType]))
+
 
 
 (def temp-path (atom nil))
@@ -45,7 +46,7 @@
   (keyword (str (dec (js/parseInt (name level))))))
 
 (defn count-veze-fn []
-  (GET "/jus/count-veze" {:handler       #(do (reset! count-veze (first %)) (swap! jus-data assoc-in [:data] (second %)) (swap! table-state assoc-in [:veza] (last %)))
+  (GET "/jus/count-veze" {:handler       #(reset! count-veze (first %))
                           :error-handler #(js/alert (str "error: " %))}))
 
 (defn init-jus-data []
@@ -197,21 +198,24 @@
   (let [n-exist (first (filter #(= naslov (:JUSopis %)) (:data @jus-data)))]
     (if n-exist (:JUSId n-exist) nil)))
 
-(defn add-nova-naredba [& old-id]
+(defn add-nova-naredba []
   (let [data @nova-naredba-atom
         naslov {:JUSopis (:naslov data)}
         glasnik {:Glasnik (:glasnik data)}
         direktiva {:Direktiva (:direktiva data)}
         link {:Link-d (:link data)}
-        X-CSRF-Token (:X-CSRF-Token data)
-        file {:Link-n (cljs-ajax-upload-file "upload-file" X-CSRF-Token)}
+        godina {:JUSgodina (:godina data)}
         naredba {:Naredba (:naredba data)}
+        ;obavezan (:Mandatory (:obavezan data))
+        X-CSRF-Token (:X-CSRF-Token data)
+        file  {:Link-n (case  (:naredba data) 0 nil
+                                       (cljs-ajax-upload-file "upload-file" X-CSRF-Token))}
         napomena {:Napomena (:napomena data)}
         ok {:Locked (:ok data)}
         old-id (naredba-exist (:naslov data))
-        id (or old-id (new-id))
-        fields-data (merge naslov direktiva link file naredba ok napomena glasnik {:JUSId id :Locked 0})]
-    (if (and (> (:naredba data) 1) (not (exist-veza id))) (add-veza id))
+        id (or old-id (:jusid data) (new-id))
+        fields-data (merge naslov direktiva link  godina naredba file ok napomena  glasnik {:JUSId id :Locked 0})]
+    (if (and (not= (:naredba data) 1) (not (exist-veza id))) (add-veza id))
     (if-not old-id
       (GET "/jus/insert" {:params        {:field-data [fields-data]}
                           :handler       #(init-jus-data)
@@ -219,34 +223,40 @@
 
 
 (defn add-nova-naredba-dialog []
-  (let [process-ok (fn [event id]
-                     (add-nova-naredba id)
-                     (reset! nova-naredba-atom {:naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba nil :X-CSRF-Token nil})
+  (let [process-ok (fn [event]
+                     (add-nova-naredba)
+                     (reset! nova-naredba-atom {:naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba nil :obavezan nil :X-CSRF-Token nil})
                      (swap! table-state assoc-in [:nova-naredba-modal] {:show? false}))
         process-cancel (fn [event]
-                         (reset! nova-naredba-atom {:show? false :naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba nil :X-CSRF-Token nil})
+                         (reset! nova-naredba-atom {:show? false :naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba nil :obavezan nil :X-CSRF-Token nil})
                          (swap! table-state assoc-in [:nova-naredba-modal] {:show? false}))]
     (fn [] (when (:show? (:nova-naredba-modal @table-state)) [modal-panel :backdrop-color "grey"
                                                               :wrap-nicely? true
                                                               :backdrop-opacity 0.4
                                                               :style {:font-family "Consolas"}
-                                                              :child [add-nova-naredba-dialog-template
+                                                              :child [naredba-dialog-template
                                                                       process-ok
                                                                       process-cancel]]))))
 
 (defn edit-nova-naredba []
+  (println @nova-naredba-atom)
   (let [data @nova-naredba-atom
         naredba {:Naredba (:naredba data)}
         jusid {:JUSId (:jusid data)}
         naslov {:JUSopis (:naslov data)}
         glasnik {:Glasnik (:glasnik data)}
         direktiva {:Direktiva (:direktiva data)}
+        obavezan {:Mandatory (:obavezan data)}
+        godina {:JUSgodina (:godina data)}
         link {:Link-d (:link data)}
         ok {:Locked (:ok data)}
         napomena {:Napomena (:napomena data)}
         X-CSRF-Token (:X-CSRF-Token data)
-        file {:Link-n (or (cljs-ajax-upload-file "upload-file" X-CSRF-Token) (:file data))}
-        fields-data (merge naslov direktiva link file glasnik naredba ok napomena)]
+        ;file {:Link-n (or (cljs-ajax-upload-file "upload-file" X-CSRF-Token) (:file data))}
+        file  {:Link-n (case  (:naredba data) 0 nil
+                                              (or (cljs-ajax-upload-file "upload-file" X-CSRF-Token) (:file data)))}
+        fields-data (merge naslov direktiva  obavezan link file glasnik godina naredba ok napomena  )]
+    (println "FD" fields-data obavezan (:obavezan data) data)
     (GET "/jus/update" {:params        {:filter jusid :field-data [fields-data] :like false}
                         :handler       (fn [x] (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= (:jusid data) (:JUSId %))] (merge fields-data jusid) y))))
                         :error-handler #(js/alert (str "error: " %))})))
@@ -254,26 +264,31 @@
 (defn edit-nova-naredba-dialog []
   (let [process-ok (fn [event]
                      (edit-nova-naredba)
-                     (reset! nova-naredba-atom {:naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba nil :napomena nil :X-CSRF-Token nil})
+                     (reset! nova-naredba-atom {:naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba nil :obavezan nil :napomena nil :X-CSRF-Token nil})
                      (swap! table-state assoc-in [:nova-naredba-modal] {:edit? false}))
         process-cancel (fn [event]
-                         (reset! nova-naredba-atom {:naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba nil :napomena nil :X-CSRF-Token nil})
+                         (reset! nova-naredba-atom {:naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba nil :obavezan nil :napomena nil :X-CSRF-Token nil})
                          (swap! table-state assoc-in [:nova-naredba-modal] {:edit? false}))]
     (fn [] (when (:edit? (:nova-naredba-modal @table-state)) [modal-panel :backdrop-color "grey"
                                                               :wrap-nicely? true
                                                               :backdrop-opacity 0.4
                                                               :style {:font-family "Consolas"}
-                                                              :child [edit-nova-naredba-dialog-template
+                                                              :child [naredba-dialog-template
                                                                       process-ok
                                                                       process-cancel]]))))
 
-(defn add-nova-naredba-event [naredba]
-  (reset! nova-naredba-atom {:naslov nil :glasnik nil :direktiva nil :link nil :file nil :naredba naredba :ok nil :napomena nil :X-CSRF-Token (h/get-value "__anti-forgery-token")})
+(defn add-naredba-event [naredba]
+  (reset! nova-naredba-atom {:jusid nil :naslov nil :glasnik nil :direktiva nil :link nil :file nil :godina nil :naredba naredba :ok nil :napomena nil :obavezan nil :X-CSRF-Token (h/get-value "__anti-forgery-token")})
   (swap! table-state assoc-in [:nova-naredba-modal] {:show? true}))
 
-(defn edit-nova-naredba-event [_ data]
-  (reset! nova-naredba-atom {:jusid (:id data) :naslov (:naslov-full data) :glasnik (:glasnik data) :direktiva (:direktiva data)
-                             :link  (:link-d data) :file (:link-n data) :naredba (:naredba data) :ok (:ok data) :napomena (:napomena data) :X-CSRF-Token (h/get-value "__anti-forgery-token")})
+
+(defn add-jus-event [naredba]
+  (reset! nova-naredba-atom {:jusid nil :naslov nil :glasnik nil :direktiva nil :link nil :file nil :godina nil :naredba naredba :ok nil :napomena nil :X-CSRF-Token (h/get-value "__anti-forgery-token")})
+  (swap! table-state assoc-in [:nova-naredba-modal] {:show? true}))
+
+(defn edit-naredba-event [_ data]
+  (reset! nova-naredba-atom {:jusid (:id data) :naslov (:naslov-full data) :glasnik (:glasnik data) :direktiva (:direktiva data) :obavezan (:obavezan data)
+                             :link  (:link-d data) :file (:link-n data) :godina (:godina data) :naredba (:naredba data) :ok (:ok data) :napomena (:napomena data) :X-CSRF-Token (h/get-value "__anti-forgery-token")})
   (swap! table-state assoc-in [:nova-naredba-modal] {:edit? true}))
 
 (defn delete-veza-event [level row]
@@ -304,8 +319,8 @@
 
 (defn count-veza-one [childs-data count-all-childs count-ok-childs]
   [(eduction (distinct) (remove nil?) (flatten (map #(conj (first %)) childs-data)))
-  (transduce (map second) + count-all-childs childs-data)
-  (transduce (map last) + count-ok-childs childs-data)])
+   (transduce (map second) + count-all-childs childs-data)
+   (transduce (map last) + count-ok-childs childs-data)])
 
 (def count-veza-1 (memoize count-veza-one))
 
@@ -320,18 +335,18 @@
         (if (not-empty childs)
           (let [childs-data (doall (for [child childs]
                                      (let [current-child (first-level-count child)]
-                                     [(:childs current-child) (:total current-child) (:locked current-child)])
+                                       [(:childs current-child) (:total current-child) (:locked current-child)])
                                      ))]
 
-              (let [result (count-veza-1 childs-data count-all-childs count-ok-childs)]
-                (recur (first result) (second result) (last result))
+            (let [result (count-veza-1 childs-data count-all-childs count-ok-childs)]
+              (recur (first result) (second result) (last result))
               ))
           [count-all-childs count-ok-childs first-level-childs-count first-level-ok-count])))
     [0 0 0 0]))
 
 
 (def count-veza
-  (memoize count-veza-full ))
+  (memoize count-veza-full))
 
 
 
@@ -355,7 +370,7 @@
                                :ok        {:type :check-box :width "5%" :icon (icon-label "zmdi-shield-check" "Završen unos vezanih standarda") :field "Locked" :action lock-jus :tooltip "Napomena: "}
                                :fali      {:type :check-box :width "5%" :icon (icon-label "zmdi-close-circle-o" "Nema JUS standarda") :field "Fali" :disabled? nil :action fali-jus}
                                :akcije    {:type     :row-button :gap "2px" :width "5%" :justify :center :icon (icon-label "zmdi-wrench" "Uređivanje podataka")
-                                           :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action edit-nova-naredba-event}
+                                           :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action edit-naredba-event}
                                                       {:id "r-b-2" :md-icon-name "zmdi zmdi-delete" :tooltip "Obriši naredbu" :tooltip-position :below-left :disabled? (disable-del) :action delete-jus-event}
                                                       {:id "r-b-3" :md-icon-name "zmdi zmdi-search-in-page" :tooltip "Prikaži naredbu" :tooltip-position :below-left :disabled? (disable-browse) :action prikazi-naredbu}]}})
 
@@ -366,20 +381,21 @@
                                      :ok      {:type :check-box :width "5%" :icon (icon-label "zmdi-shield-check" "Završen unos vezanih standarda") :field "Locked" :action lock-jus :tooltip "Napomena: "}
                                      :fali    {:type :check-box :width "5%" :icon (icon-label "zmdi-close-circle-o" "Nema JUS standarda") :field "Fali" :disabled? nil :action fali-jus}
                                      :akcije  {:type     :row-button :gap "2px" :width "5%" :justify :center :icon (icon-label "zmdi-wrench" "Uređivanje podataka")
-                                               :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action edit-nova-naredba-event}
+                                               :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action edit-naredba-event}
                                                           {:id "r-b-2" :md-icon-name "zmdi zmdi-delete" :tooltip "Obriši naredbu" :tooltip-position :below-left :disabled? (disable-del nil) :action delete-veza-event}
                                                           {:id "r-b-3" :md-icon-name "zmdi zmdi-search-in-page" :tooltip "Prikaži naredbu" :tooltip-position :below-left :disabled? (disable-browse) :action prikazi-naredbu}]}})
 
 
 (defn col-widths-types-jus [alow-new-veza] {:jusid    {:type :label :width "15%" :field "JUSId" :action false :label "JUS"}
-                                            :opis     {:type :label :width "58%" :field "JUSopis" :action :click :function set-path :label "Naslov" :double-click reset-path :tooltip "Puni naslov: "}
+                                            :opis     {:type :label :width "56%" :field "JUSopis" :action :click :function set-path :label "Naslov" :double-click reset-path :tooltip "Puni naslov: "}
                                             :veze     {:type :label :width "5%" :icon (icon-label "zmdi-attachment-alt" "Ukupan broj vezanih standarda") :field nil :action false :tooltip "Broj direktno vezanih JUS standarda: "}
                                             :gotovo   {:type :label :width "5%" :icon (icon-label "zmdi-key" "Ukupan broj završenih vezanih standarda") :field nil :action false :tooltip "Završeno direktno vezanih JUS standarda: "}
                                             :ok       {:type :check-box :width "5%" :icon (icon-label "zmdi-shield-check" "Završen unos vezanih standarda") :field "Locked" :disabled? nil :action lock-jus}
                                             :fali     {:type :check-box :width "5%" :icon (icon-label "zmdi-close-circle-o" "Nema JUS standarda") :field "Fali" :disabled? nil :action fali-jus}
                                             :obavezan {:type :slider :width "5%" :min 0 :max 2 :step 1 :icon (icon-label "zmdi-alert-circle" "Sa obaveznom primjenom") :field "Mandatory" :disabled? nil :action obavezan-jus}
-                                            :brisi    {:type     :row-button :gap "2px" :width "2%" :justify :end :icon (icon-label "zmdi-delete" "Brisanje reda")
-                                                       :children [{:id               "r-b-1" :md-icon-name "zmdi zmdi-delete" :tooltip (if alow-new-veza "Obriši vezu!" "Ova veza je zaključana!")
+                                            :brisi    {:type     :row-button :gap "2px" :width "4%" :justify :end :icon (icon-label "zmdi-delete" "Brisanje reda")
+                                                       :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action edit-naredba-event}
+                                                                  {:id               "r-b-2" :md-icon-name "zmdi zmdi-delete" :tooltip (if alow-new-veza "Obriši vezu!" "Ova veza je zaključana!")
                                                                    :tooltip-position :left-center :disabled? (disable-del nil) :action delete-veza-event}]}})
 
 (defn find-selected [JUSId lev]
@@ -433,17 +449,21 @@
                                                                         nil)))
                                                             (:data data))))
 
-(defn rows-jus [data screen] (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis JUSgodina Locked Naredba Mandatory Fali]} x
+(defn rows-jus [data screen] (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis JUSgodina Locked Naredba Mandatory Napomena Fali]} x
                                                           count-veza (count-veza JUSId)]
                                                       (if (= Naredba 0)
                                                         {JUSId {:id       JUSId
                                                                 :jusid    (str JUSId ":" JUSgodina)
                                                                 :opis     (h/cut-str-at JUSopis screen)
+                                                                :naslov-full JUSopis
                                                                 :veze     (first count-veza)
                                                                 :gotovo   (second count-veza)
+                                                                :naredba     Naredba
                                                                 :ok       Locked
                                                                 :obavezan Mandatory
+                                                                :godina JUSgodina
                                                                 :fali     Fali
+                                                                :napomena    Napomena
                                                                 :selected (find-selected JUSId (:level data))
                                                                 ;:click     set-path
                                                                 :level    (:level data)
@@ -584,7 +604,7 @@
                                                          :child [data-table rows-naredbe col-widths-types-naredbe :0]]
                                                         [button
                                                          :label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
-                                                         :on-click #(add-nova-naredba-event 1)
+                                                         :on-click #(add-naredba-event 1)
                                                          :disabled? (not= (count at-path) 0)
                                                          :style {:color            "white"
                                                                  :font-size        "14px"
@@ -619,7 +639,7 @@
                                                            [:div ""])]
                                                         [button
                                                          :label [:span "Stara naredba I " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
-                                                         :on-click #(add-nova-naredba-event 2)
+                                                         :on-click #(add-naredba-event 2)
                                                          :disabled? (not= (count at-path) 1)
                                                          :style {:color            "white"
                                                                  :font-size        "14px"
@@ -654,7 +674,7 @@
                                                            [:div ""])]
                                                         [button
                                                          :label [:span "Stara naredba II " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
-                                                         :on-click #(add-nova-naredba-event 3)
+                                                         :on-click #(add-naredba-event 3)
                                                          :disabled? (not= (count at-path) 2)
                                                          :style {:color            "white"
                                                                  :font-size        "14px"
@@ -715,8 +735,8 @@
                                                                                         [gap :size "4px"]
                                                                                         [button
                                                                                          :label [:span "JUS " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
-                                                                                         :disabled? (or (not choice) (exist-veza) (not alow-new-veza) (< (count at-path) 2))
-                                                                                         :on-click #(add-veza)
+                                                                                         :disabled? (or (exist-veza) (not alow-new-veza) (< (count at-path) 2))
+                                                                                         :on-click #(if choice (add-veza) (add-naredba-event 0))
                                                                                          :style {:color            "white"
                                                                                                  :font-size        "14px"
                                                                                                  :background-color (:3 colors)
@@ -758,7 +778,7 @@
 
 
 (defn ^:export main []
-  ;(init-jus-data)
+  (init-jus-data)
   (count-veze-fn)
   (init-only-jus)
   (f/set-options! {:button-primary {:attrs {:style {:margin "5px"}}}})
