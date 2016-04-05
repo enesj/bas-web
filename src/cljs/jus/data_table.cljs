@@ -127,50 +127,13 @@
                     (f/form
                       (f/text "JUS" nova-naredba-atom [:jusid])
                       (f/text "Naslov" nova-naredba-atom [:naslov])
-                      (f/text "Glasnik" nova-naredba-atom [:glasnik])
                       (f/text "Godina" nova-naredba-atom [:godina])
-                      ;(f/text "Obavezan" nova-naredba-atom [:obavezan])
                       (f/text "Napomena" nova-naredba-atom [:napomena])
                       (f/form-buttons
                         (f/button-primary "Snimi" #(process-ok))
                         (f/button-default "Cancel" #(process-cancel)))))
                 )]])
 
-
-(defn jus-dialog-template [process-ok process-cancel]
-  [v-box
-   :width "700px"
-   :children [(if (= (:naredba @nova-naredba-atom) 1)
-                (f/panel
-                  "Dodaj naredbu: "
-                  (f/form
-                    (f/text "Naslov" nova-naredba-atom [:naslov])
-                    (f/text "Glasnik" nova-naredba-atom [:glasnik])
-                    (f/text "Direktiva" nova-naredba-atom [:direktiva])
-                    (f/text "Link" nova-naredba-atom [:link])
-                    (f/text "Napomena" nova-naredba-atom [:napomena])
-                    (f/text "File" nova-naredba-atom [:file])
-                    (upload-component)
-                    (f/form-buttons
-                      (f/button-primary "Snimi" #(process-ok))
-                      (f/button-default "Cancel" #(process-cancel)))))
-                (f/panel
-                  "Dodaj naredbu: "
-                  (f/form
-                    (if (= (:naredba @nova-naredba-atom) 2)
-                      (f/text "Naslov" nova-naredba-atom [:naslov])
-                      (f/text {:on-blur #(reset! postojeca (naredba-exist (h/get-value "naslov")))
-                               :style   (if @postojeca {:border-color "red"} {:border-color "lightgray"})}
-                              "Naslov" nova-naredba-atom [:naslov]
-                              :warn-fn #(if @postojeca "Ova naredba postoji!"))
-                      )
-                    (f/text "Glasnik" nova-naredba-atom [:glasnik])
-                    (f/text "Napomena" nova-naredba-atom [:napomena])
-                    (f/text "File" nova-naredba-atom [:file])
-                    (upload-component)
-                    (f/form-buttons
-                      (f/button-primary "Snimi" #(process-ok @postojeca))
-                      (f/button-default "Cancel" #(process-cancel))))))]])
 
 (defn tooltip-label [label1 label tip show-tooltip?]
   (let [label-kw (keyword label1)
@@ -192,8 +155,6 @@
 
 (defn data-row
   [row col-widths level show-tooltip?]
-
-  ;(if (= 0 (:naredba row)) (println "Ob" (:obavezan row)))
   (let [mouse-over-row? true]
     [h-box
      :class "rc-div-table-row"

@@ -21,6 +21,8 @@
 
 (def jus-all-data (atom {:data nil}))
 
+(def show-level (atom nil))
+
 (def count-veze (atom nil))
 
 (def showing (atom {:hover? false :choice nil :prefix "A"}))
@@ -37,7 +39,6 @@
         all-childs))))
 
 (defn is-child? [id child] (some #{child} (all-childs id)))
-
 
 (defn next-level [level]
   (keyword (str (inc (js/parseInt (name level))))))
@@ -206,15 +207,13 @@
         link {:Link-d (:link data)}
         godina {:JUSgodina (:godina data)}
         naredba {:Naredba (:naredba data)}
-        ;obavezan (:Mandatory (:obavezan data))
         X-CSRF-Token (:X-CSRF-Token data)
-        file  {:Link-n (case  (:naredba data) 0 nil
-                                       (cljs-ajax-upload-file "upload-file" X-CSRF-Token))}
+        file {:Link-n (case (:naredba data) 0 nil (cljs-ajax-upload-file "upload-file" X-CSRF-Token))}
         napomena {:Napomena (:napomena data)}
         ok {:Locked (:ok data)}
         old-id (naredba-exist (:naslov data))
         id (or old-id (:jusid data) (new-id))
-        fields-data (merge naslov direktiva link  godina naredba file ok napomena  glasnik {:JUSId id :Locked 0})]
+        fields-data (merge naslov direktiva link godina naredba file ok napomena glasnik {:JUSId id :Locked 0})]
     (if (and (not= (:naredba data) 1) (not (exist-veza id))) (add-veza id))
     (if-not old-id
       (GET "/jus/insert" {:params        {:field-data [fields-data]}
@@ -251,9 +250,8 @@
         ok {:Locked (:ok data)}
         napomena {:Napomena (:napomena data)}
         X-CSRF-Token (:X-CSRF-Token data)
-        file  {:Link-n (case  (:naredba data) 0 nil
-                                              (or (cljs-ajax-upload-file "upload-file" X-CSRF-Token) (:file data)))}
-        fields-data (merge naslov direktiva  obavezan link file glasnik godina naredba ok napomena  )]
+        file {:Link-n (case (:naredba data) 0 nil (or (cljs-ajax-upload-file "upload-file" X-CSRF-Token) (:file data)))}
+        fields-data (merge naslov direktiva obavezan link file glasnik godina naredba ok napomena)]
     (GET "/jus/update" {:params        {:filter jusid :field-data [fields-data] :like false}
                         :handler       (fn [x] (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= (:jusid data) (:JUSId %))] (merge fields-data jusid) y))))
                         :error-handler #(js/alert (str "error: " %))})))
@@ -276,7 +274,8 @@
 
 (defn naredba-event [_ data]
   (reset! nova-naredba-atom {:jusid (:id data) :naslov (:naslov-full data) :glasnik (:glasnik data) :direktiva (:direktiva data)
-                             :link  (:link-d data) :file (:link-n data) :godina (:godina data) :naredba (:naredba data) :ok (:ok data) :napomena (:napomena data) :obavezan (:obavezan data) :X-CSRF-Token (h/get-value "__anti-forgery-token")})
+                             :link  (:link-d data) :file (:link-n data) :godina (:godina data) :naredba (:naredba data)
+                             :ok (:ok data) :napomena (:napomena data) :obavezan (:obavezan data) :X-CSRF-Token (h/get-value "__anti-forgery-token")})
   (swap! table-state assoc-in [:nova-naredba-modal] (if (:id data) {:edit? true} {:show? true})))
 
 
@@ -311,9 +310,8 @@
    (transduce (map second) + count-all-childs childs-data)
    (transduce (map last) + count-ok-childs childs-data)])
 
-(def count-veza-1 (memoize count-veza-one))
 
-(defn count-veza-full [id]
+(defn count-veza [id]
   (if @count-veze
     (let [first-level-count @count-veze
           first-level-childs-count (:total (first-level-count id))
@@ -322,22 +320,11 @@
              count-all-childs 0
              count-ok-childs 0]
         (if (not-empty childs)
-          (let [childs-data (doall (for [child childs]
-                                     (let [current-child (first-level-count child)]
-                                       [(:childs current-child) (:total current-child) (:locked current-child)])
-                                     ))]
-
-            (let [result (count-veza-1 childs-data count-all-childs count-ok-childs)]
-              (recur (first result) (second result) (last result))
-              ))
+          (let [childs-data (mapv #(vector (:childs %) (:total %) (:locked %)) (vals (select-keys first-level-count childs)))]
+            (let [result (count-veza-one childs-data count-all-childs count-ok-childs)]
+              (recur (first result) (second result) (last result)  )))
           [count-all-childs count-ok-childs first-level-childs-count first-level-ok-count])))
     [0 0 0 0]))
-
-
-(def count-veza
-  (memoize count-veza-full))
-
-
 
 (defn disable-del [& type]
   (fn [row]
@@ -351,41 +338,35 @@
       ((constantly (first type)))
       (if (> (count (:link-n row)) 1) nil true))))
 
-(def col-widths-types-naredbe {:naslov    {:type :label :width "58%" :field "JUSopis" :action :click :function set-path :double-click reset-path :tooltip "Puni naslov: "}
-                               :glasnik   {:type :label :width "7%" :field "Glasnik" :action false}
-                               :direktiva {:type :href :width "10%" :field "Direktiva" :href :link-d :action false}
-                               :veze      {:type :label :width "5%" :icon (icon-label "zmdi-attachment-alt" "Ukupan broj vezanih standarda") :field nil :action false :tooltip "Broj direktno vezanih naredbi: "}
-                               :gotovo    {:type :label :width "5%" :icon (icon-label "zmdi-key" "Ukupan broj završenih vezanih standarda") :field nil :action false :tooltip "Završeno direktno vezanih naredbi: "}
-                               :ok        {:type :check-box :width "5%" :icon (icon-label "zmdi-shield-check" "Završen unos vezanih standarda") :field "Locked" :action lock-jus :tooltip "Napomena: "}
-                               :fali      {:type :check-box :width "5%" :icon (icon-label "zmdi-close-circle-o" "Nema JUS standarda") :field "Fali" :disabled? nil :action fali-jus}
-                               :akcije    {:type     :row-button :gap "2px" :width "5%" :justify :center :icon (icon-label "zmdi-wrench" "Uređivanje podataka")
-                                           :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action naredba-event}
-                                                      {:id "r-b-2" :md-icon-name "zmdi zmdi-delete" :tooltip "Obriši naredbu" :tooltip-position :below-left :disabled? (disable-del) :action delete-jus-event}
-                                                      {:id "r-b-3" :md-icon-name "zmdi zmdi-search-in-page" :tooltip "Prikaži naredbu" :tooltip-position :below-left :disabled? (disable-browse) :action prikazi-naredbu}]}})
+(def format-table
+  (let [widts-nove {:naslov "57%" :glasnik "7%" :direktiva "10%" :veze "5%" :gotovo "5%"  :ok "5%" :fali "5%" :akcije "5%"}
+        widts-stare {:naslov "60%" :glasnik "15%" :veze "5%" :gotovo "5%" :ok "5%" :fali "5%" :akcije "5%"}
+        widts-jus {:jusid "15%" :opis "56%"  :veze "5%" :gotovo "5%" :ok "5%" :fali "5%" :obavezan "5%" :brisi "4%"}
+        jusid {:type :label :width "15%" :field "JUSId" :action false :label "JUS"}
+        naslov {:type :label :width "60%" :field "JUSopis" :action :click :function set-path :double-click reset-path :tooltip "Puni naslov: "}
+        glasnik {:type :label :width "7%" :field "Glasnik" :action false}
+        direktiva {:type :href :width "10%" :field "Direktiva" :href :link-d :action false}
+        veze {:type :label :width "5%" :icon (icon-label "zmdi-attachment-alt" "Ukupan broj vezanih standarda") :field nil :action false :tooltip "Broj direktno vezanih naredbi: "}
+        gotovo {:type :label :width "5%" :icon (icon-label "zmdi-key" "Ukupan broj završenih vezanih standarda") :field nil :action false :tooltip "Završeno direktno vezanih naredbi: "}
+        ok {:type :check-box :width "5%" :icon (icon-label "zmdi-shield-check" "Završen unos vezanih standarda") :field "Locked" :action lock-jus :tooltip "Napomena: "}
+        fali {:type :check-box :width "5%" :icon (icon-label "zmdi-close-circle-o" "Nema JUS standarda") :field "Fali" :disabled? nil :action fali-jus}
+        obavezan {:type :slider :width "5%" :min 0 :max 2 :step 1 :icon (icon-label "zmdi-alert-circle" "Sa obaveznom primjenom") :field "Mandatory" :disabled? nil :action obavezan-jus}
+        akcije {:type     :row-button :gap "2px" :width "5%" :justify :center :icon (icon-label "zmdi-wrench" "Uređivanje podataka")
+                :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action naredba-event}
+                           {:id "r-b-2" :md-icon-name "zmdi zmdi-delete" :tooltip "Obriši naredbu" :tooltip-position :below-left :disabled? (disable-del) :action delete-jus-event}
+                           {:id "r-b-3" :md-icon-name "zmdi zmdi-search-in-page" :tooltip "Prikaži naredbu" :tooltip-position :below-left :disabled? (disable-browse) :action prikazi-naredbu}]}
+        brisi {:type     :row-button :gap "2px" :width "4%" :justify :end :icon (icon-label "zmdi-delete" "Brisanje reda")
+               :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action naredba-event}
+                          {:id               "r-b-2" :md-icon-name "zmdi zmdi-delete" :tooltip (if (alow-new-veza) "Obriši vezu!" "Ova veza je zaključana!")
+                           :tooltip-position :left-center :disabled? (disable-del nil) :action delete-veza-event}]}]
 
-(def col-widths-types-naredbe-stare {:naslov  {:type :label :width "60%" :field "JUSopis" :action :click :function set-path :double-click reset-path :tooltip "Puni naslov: "}
-                                     :glasnik {:type :label :width "15%" :field "Glasnik" :action false :label "Sl. list SFRJ"}
-                                     :veze    {:type :label :width "5%" :icon (icon-label "zmdi-attachment-alt" "Ukupan broj vezanih standarda") :field nil :action false :tooltip "Broj direktno vezanih JUS standarda: "}
-                                     :gotovo  {:type :label :width "5%" :icon (icon-label "zmdi-key" "Ukupan broj završenih vezanih standarda") :field nil :action false :tooltip "Završeno direktno vezanih JUS standarda: "}
-                                     :ok      {:type :check-box :width "5%" :icon (icon-label "zmdi-shield-check" "Završen unos vezanih standarda") :field "Locked" :action lock-jus :tooltip "Napomena: "}
-                                     :fali    {:type :check-box :width "5%" :icon (icon-label "zmdi-close-circle-o" "Nema JUS standarda") :field "Fali" :disabled? nil :action fali-jus}
-                                     :akcije  {:type     :row-button :gap "2px" :width "5%" :justify :center :icon (icon-label "zmdi-wrench" "Uređivanje podataka")
-                                               :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action naredba-event}
-                                                          {:id "r-b-2" :md-icon-name "zmdi zmdi-delete" :tooltip "Obriši naredbu" :tooltip-position :below-left :disabled? (disable-del nil) :action delete-veza-event}
-                                                          {:id "r-b-3" :md-icon-name "zmdi zmdi-search-in-page" :tooltip "Prikaži naredbu" :tooltip-position :below-left :disabled? (disable-browse) :action prikazi-naredbu}]}})
+    {:naredbe-nove  (merge-with #(merge %1 {:width %2})
+                                {:naslov naslov :glasnik glasnik :direktiva direktiva :veze veze :gotovo gotovo :ok ok :fali fali :akcije akcije} widts-nove)
+     :naredbe-stare (merge-with #(merge %1 {:width %2})
+                                {:naslov naslov :glasnik glasnik :veze veze :gotovo gotovo :ok ok :fali fali :akcije akcije} widts-stare)
+     :jus           (merge-with #(merge %1 {:width %2})
+                                {:jusid jusid :opis naslov :veze veze :gotovo gotovo :ok ok :fali fali :obavezan obavezan :brisi brisi} widts-jus)}))
 
-
-(defn col-widths-types-jus [alow-new-veza] {:jusid    {:type :label :width "15%" :field "JUSId" :action false :label "JUS"}
-                                            :opis     {:type :label :width "56%" :field "JUSopis" :action :click :function set-path :label "Naslov" :double-click reset-path :tooltip "Puni naslov: "}
-                                            :veze     {:type :label :width "5%" :icon (icon-label "zmdi-attachment-alt" "Ukupan broj vezanih standarda") :field nil :action false :tooltip "Broj direktno vezanih JUS standarda: "}
-                                            :gotovo   {:type :label :width "5%" :icon (icon-label "zmdi-key" "Ukupan broj završenih vezanih standarda") :field nil :action false :tooltip "Završeno direktno vezanih JUS standarda: "}
-                                            :ok       {:type :check-box :width "5%" :icon (icon-label "zmdi-shield-check" "Završen unos vezanih standarda") :field "Locked" :disabled? nil :action lock-jus}
-                                            :fali     {:type :check-box :width "5%" :icon (icon-label "zmdi-close-circle-o" "Nema JUS standarda") :field "Fali" :disabled? nil :action fali-jus}
-                                            :obavezan {:type :slider :width "5%" :min 0 :max 2 :step 1 :icon (icon-label "zmdi-alert-circle" "Sa obaveznom primjenom") :field "Mandatory" :disabled? nil :action obavezan-jus}
-                                            :brisi    {:type     :row-button :gap "2px" :width "4%" :justify :end :icon (icon-label "zmdi-delete" "Brisanje reda")
-                                                       :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action naredba-event}
-                                                                  {:id               "r-b-2" :md-icon-name "zmdi zmdi-delete" :tooltip (if alow-new-veza "Obriši vezu!" "Ova veza je zaključana!")
-                                                                   :tooltip-position :left-center :disabled? (disable-del nil) :action delete-veza-event}]}})
 
 (defn find-selected [JUSId lev]
   (let [next-lev (next-level lev)
@@ -395,13 +376,26 @@
         true nil) nil)))
 
 
-(defn rows-naredbe [data screen]
-  (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis Glasnik Direktiva Link-n Link-d Naredba Locked Napomena Fali]} x
-                               count-veza (count-veza-full JUSId)]
+(def table-fields
+  {:nove [:id :naslov-full :naslov :glasnik :direktiva  :link-n :link-d  :veze :gotovo  :naredba  :ok :fali  :napomena :selected :level  :tooltip ]
+   :stare [:id :naslov-full :naslov :glasnik  :link-n  :veze :gotovo  :naredba  :ok :fali  :napomena :selected :level  :tooltip ]
+   :jus [:id :jusid :naslov-full :opis :glasnik  :link-n  :veze :gotovo  :naredba  :ok :fali :obavezan :napomena :selected :level  :tooltip ]
+   :non []})
+
+
+(defn rows-naredbe [data screen type]
+  (let [data (if (= (:level data) :2) (if  (= type :jus)  {:level (:level data) :data (filter #(= (:Naredba  %) 0) (:data data))}
+                                                          {:level (:level data) :data (filter #(> (:Naredba  %) 0) (:data data))} ) data)]
+    (map #(vector (key %) (select-keys (val %) (type table-fields)))
+       (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis JUSgodina Glasnik Direktiva Link-n Link-d Naredba Locked Mandatory Napomena Fali]} x
+                               count-veza (count-veza JUSId)]
                            {JUSId {:id          JUSId
+                                   :jusid       (str JUSId ":" JUSgodina)
                                    :naslov-full JUSopis
                                    :naslov      (h/cut-str-at JUSopis screen)
+                                   :opis        (h/cut-str-at JUSopis screen)
                                    :glasnik     Glasnik
+                                   :godina      JUSgodina
                                    :direktiva   Direktiva
                                    :link-n      Link-n
                                    :link-d      Link-d
@@ -409,73 +403,50 @@
                                    :gotovo      (second count-veza)
                                    :naredba     Naredba
                                    :ok          Locked
+                                   :obavezan    Mandatory
                                    :fali        Fali
                                    :napomena    Napomena
-                                   :selected    (find-selected JUSId :0)
-                                   ;:click     set-path
-                                   :level       :0
-                                   :tooltip     {:veze (nth count-veza 2) :gotovo (last count-veza) :naslov JUSopis :ok Napomena}}})) data)))
+                                   :selected    (find-selected JUSId (:level data))
+                                   :level       (:level data)
+                                   :tooltip     {:veze (nth count-veza 2) :gotovo (last count-veza) :naslov JUSopis :ok Napomena}}})) (:data data))))))
 
-(defn rows-naredbe-stare [data screen level] (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis Glasnik Link-n Link-d Naredba Locked Napomena Fali]} x
-                                                                          count-veza (count-veza JUSId)]
-                                                                      (if (> Naredba 0)
-                                                                        {JUSId {:id          JUSId
-                                                                                :naslov-full JUSopis
-                                                                                :naslov      (h/cut-str-at JUSopis screen)
-                                                                                :glasnik     Glasnik
-                                                                                :link-n      Link-n
-                                                                                :link-d      Link-d
-                                                                                :veze        (first count-veza)
-                                                                                :gotovo      (second count-veza)
-                                                                                :naredba     Naredba
-                                                                                :ok          Locked
-                                                                                :fali        Fali
-                                                                                :napomena    Napomena
-                                                                                :selected    (find-selected JUSId (:level data))
-                                                                                ;:click     set-path
-                                                                                :level       (:level data)
-                                                                                :tooltip     {:veze (nth count-veza 2) :gotovo (last count-veza) :naslov JUSopis :ok Napomena}}}
-                                                                        nil)))
-                                                            (:data data))))
-
-(defn rows-jus [data screen] (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis JUSgodina Locked Naredba Mandatory Napomena Fali]} x
-                                                          count-veza (count-veza JUSId)]
-                                                      (if (= Naredba 0)
-                                                        {JUSId {:id       JUSId
-                                                                :jusid    (str JUSId ":" JUSgodina)
-                                                                :opis     (h/cut-str-at JUSopis screen)
-                                                                :naslov-full JUSopis
-                                                                :veze     (first count-veza)
-                                                                :gotovo   (second count-veza)
-                                                                :naredba     Naredba
-                                                                :ok       Locked
-                                                                :obavezan Mandatory
-                                                                :godina JUSgodina
-                                                                :fali     Fali
-                                                                :napomena    Napomena
-                                                                :selected (find-selected JUSId (:level data))
-                                                                ;:click     set-path
-                                                                :level    (:level data)
-                                                                :tooltip  {:veze (nth count-veza 2) :gotovo (last count-veza) :opis JUSopis}}}
-                                                        nil))) (:data data))))
 
 (defn dropdown-data [data criteria]
-  (into [] (filterv #(= criteria (:prefix %))
-                    (sort-by :id (map (fn [x] (let [{:keys [JUSId]} x]
-                                                {:id JUSId :label JUSId :prefix (first (clojure.string/split JUSId "."))})) data)))))
+   (sort-by :id (filterv #(= criteria (:prefix %))
+                     (mapv (fn [x] (let [{:keys [JUSId]} x]
+                                                {:id JUSId :label JUSId :prefix (first (clojure.string/split JUSId "."))})) data))))
 
-(defn dropdown-prefix [data]
-  (sort-by :id (vec (into #{} (map (fn [x] (let [{:keys [JUSId]} x]
-                                             {:id (first (clojure.string/split JUSId ".")) :label (first (clojure.string/split JUSId "."))})) (filterv #(= 0 (:Naredba %)) data))))))
+(def dropdown-prefix
+[{:id "A", :label "A"}
+  {:id "B", :label "B"}
+  {:id "C", :label "C"}
+  {:id "D", :label "D"}
+  {:id "E", :label "E"}
+  {:id "F", :label "F"}
+  {:id "G", :label "G"}
+  {:id "H", :label "H"}
+  {:id "I", :label "I"}
+  {:id "J", :label "J"}
+  {:id "K", :label "K"}
+  {:id "L", :label "L"}
+  {:id "M", :label "M"}
+  {:id "N", :label "N"}
+  {:id "P", :label "P"}
+  {:id "R", :label "R"}
+  {:id "U", :label "U"}
+  {:id "Z", :label "Z"}])
+
 
 
 (defn rows-level [level]
-  (let [parent (level @path)
+  (if (not= level :0)
+    (let [parent (level @path)
         criteria (->> (:veza @table-state)
                       (filterv #(= parent (:Parent %)))
                       (mapv :Child)
                       (into #{}))]
-    {:data (filterv #(criteria (:JUSId %)) (:data @jus-data)) :level level}))
+    {:data (filterv #(criteria (:JUSId %)) (:data @jus-data)) :level level})
+    {:data (filter #(= (:Naredba %) 1) (:data @jus-data)) :level level }))
 
 
 (defn resize []
@@ -484,17 +455,11 @@
       (swap! table-state assoc-in [:table-size] (/ (.-offsetWidth table) 12)))))
 
 
-(defn splitter-props []
-  nil)
-
-
 (defn opis-level [level]
   (let [jus (first (filterv #(= (:JUSId %) (level @path)) (:data @jus-data)))]
     (if (> (:Naredba jus) 0)
       [0 (:JUSopis jus)]
       [1 (:JUSId jus)])))
-
-(def show-level (atom nil))
 
 (defn data-tables-level [level path screen]
   (let [path-count (count path)
@@ -510,7 +475,6 @@
                                                    (str "JUS standard " (second (opis-level level)) " veže:"))]
       (if (< (- level-int 1) path-count (+ level-int 2))
         [scroller
-         ;:size "flex-shrink"
          :margin "5px"
          :style {:margin-bottom "30px"}
          :v-scroll :auto
@@ -522,12 +486,9 @@
          :min-width "800px"
          :max-height "270px"
          :min-height "100px"
-         :child [data-table (rows-jus (rows-level level) screen) (col-widths-types-jus (alow-new-veza))
+         :child [data-table (rows-naredbe (rows-level level) screen :jus) (:jus format-table)
                  level]]
         [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:1 colors)}])]]))
-;[gap :size "30px"]
-
-
 
 (defn entry-point []
   (r/create-class
@@ -536,17 +497,15 @@
      :reagent-render (fn []
                        (let [at-path @path
                              path-count (count at-path)
-                             jus-data (r/cursor jus-data [:data])
-                             jus-all-data @(r/cursor jus-all-data [:data])
+                             jus-only (:data @jus-all-data)
                              ;screen @(r/cursor table-state [:table-size])
                              screen 80
                              choice (:choice @showing)
                              prefix (:prefix @showing)
-                             rows-naredbe (rows-naredbe (filter #(= (:Naredba %) 1) @jus-data) screen)
                              alow-new-veza (alow-new-veza)
                              v-height (* (.-innerHeight js/window) 0.8)]
 
-                         (if (not-empty rows-naredbe)
+                         (if (not-empty [1])
                            [:div
                             [v-box
                              :align :center
@@ -589,7 +548,7 @@
                                                          :min-width "800px"
                                                          :max-height "270px"
                                                          ;:min-height "200px"
-                                                         :child [data-table rows-naredbe col-widths-types-naredbe :0]]
+                                                         :child [data-table (rows-naredbe (rows-level :0) screen :nove) (:naredbe-nove format-table) :0]]
                                                         [button
                                                          :label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
                                                          :on-click #(naredba-event nil {:naredba 1})
@@ -623,7 +582,7 @@
                                                          :max-height "270px"
                                                          :child
                                                          (if (not-empty at-path)
-                                                           [data-table (rows-naredbe-stare (rows-level :1) screen 2) col-widths-types-naredbe-stare :1]
+                                                           [data-table (rows-naredbe (rows-level :1) screen :stare) (:naredbe-stare format-table) :1]
                                                            [:div ""])]
                                                         [button
                                                          :label [:span "Stara naredba I " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
@@ -647,8 +606,7 @@
                                                        :width "100%"
                                                        :height "auto"
                                                        :children
-                                                       [
-                                                        [scroller
+                                                       [[scroller
                                                          :v-scroll :auto
                                                          :height "100%"
                                                          :scroll :auto
@@ -658,7 +616,7 @@
                                                          :max-height "270px"
                                                          :child
                                                          (if (not-empty at-path)
-                                                           [data-table (rows-naredbe-stare (rows-level :2) screen 3) col-widths-types-naredbe-stare :2]
+                                                           [data-table (rows-naredbe (rows-level :2) screen :stare) (:naredbe-stare format-table) :2]
                                                            [:div ""])]
                                                         [button
                                                          :label [:span "Stara naredba II " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
@@ -698,13 +656,13 @@
                                                                             [box
                                                                              :align-self :center
                                                                              :margin "5px"
-                                                                             :child (str choice " - " (:JUSopis (first (filterv #(= choice (:JUSId %)) jus-all-data))))])
+                                                                             :child (str choice " - " (:JUSopis (first (filterv #(= choice (:JUSId %)) jus-only))))])
                                                                           (if (not-empty at-path)
                                                                             [h-box
                                                                              :justify :center
                                                                              :children [
                                                                                         [single-dropdown
-                                                                                         :choices (dropdown-prefix jus-all-data)
+                                                                                         :choices dropdown-prefix
                                                                                          :model prefix
                                                                                          :width "80px"
                                                                                          :max-height "100px"
@@ -713,7 +671,7 @@
                                                                                          #(do (swap! showing assoc-in [:choice] nil) (swap! showing assoc-in [:prefix] %))]
                                                                                         [gap :size "4px"]
                                                                                         [single-dropdown
-                                                                                         :choices (dropdown-data jus-all-data prefix)
+                                                                                         :choices (dropdown-data jus-only prefix)
                                                                                          :model choice
                                                                                          :width "150px"
                                                                                          :max-height "100px"
@@ -742,7 +700,6 @@
                                                                                       :border-bottom    "none"
                                                                                       :border-left      "4px solid rgba(255, 0, 0, 0.8)"
                                                                                       :border-radius    "0px"}
-                                                                              ;:style {:margin-top "20px"}
                                                                               :alert-type :danger
                                                                               :body "Ovaj JUS standard je već unesen!"
                                                                               :padding "6px"
@@ -764,23 +721,9 @@
                                                     [gap :size "20px"]]]]]]
                            [:div "Loading"])))}))
 
-
 (defn ^:export main []
   (init-jus-data)
   (count-veze-fn)
   (init-only-jus)
   (f/set-options! {:button-primary {:attrs {:style {:margin "5px"}}}})
   (r/render-component (fn [] [entry-point]) (h/get-elem "app")))
-
-
-(defn dummy-veza []
-  (flatten (mapv (fn [x] (for [child (second x)]
-                           (hash-map :Parent (first x) :Child child)))
-                 (into [] (zipmap (mapv :JUSId (filter #(= (:Naredba %) 2) (:data @jus-data)))
-                                  (mapv #(map :JUSId %) (partition 15 (:data @jus-all-data))))))))
-
-(defn prepare-dummy-veza []
-  (for [[child parent] (partition 2 (for [veza (select [ALL ALL LAST] (map vec (into #{} (dummy-veza))))] veza))]
-    (GET "/jus/add-veza" {:params        {:parent parent :child child}
-                          :handler       #(do (swap! showing assoc-in [:choice] nil) (init-veza [parent child]))
-                          :error-handler #(do (js/alert (str "error: " %)) (init-veza))})))
