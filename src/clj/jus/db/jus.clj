@@ -64,7 +64,7 @@
 
 
 
-(defn handle-upload [{:keys [filename size tempfile] :as params}]
+(defn handle-upload [{:keys [filename size tempfile] }]
 	(io/copy (io/file tempfile) (io/file (str "./public/pdf/" filename)))
 	(if
 		(or (not filename)

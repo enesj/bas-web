@@ -3,7 +3,7 @@
   (:require [reagent.core :as r :refer [atom render-component]]
             [jus.helper :as h]
             [ajax.core :refer [GET POST json-response-format json-request-format url-request-format ajax-request]]
-            [goog.events :as events]
+            ;[goog.events :as events]
             [reforms.reagent :include-macros true :as f]
             [re-com.core :as re-com :refer [h-box v-box box gap line row-button label checkbox horizontal-bar-tabs vertical-bar-tabs title p scroller single-dropdown button alert-box
                                             v-split h-split modal-panel]
@@ -39,6 +39,7 @@
         all-childs))))
 
 (defn is-child? [id child] (some #{child} (all-childs id)))
+
 
 (defn next-level [level]
   (keyword (str (inc (js/parseInt (name level))))))
@@ -95,7 +96,8 @@
   (let [id (:id row)
         criteria {:JUSId id}
         data (if (= 1 (:fali row)) 0 1)
-        parent ((:level row) @path)]
+        ;parent ((:level row) @path)
+        ]
     (GET "/jus/update" {:params        {:filter criteria :field-data [{:Fali data}] :like false}
                         :handler       (fn [x] (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Fali] data y)))))
 
@@ -167,6 +169,7 @@
   (GET "/jus/delete" {:params        {:jusid (:jusid (:delete-jus-modal @table-state))}
                       :handler       #(init-jus-data)
                       :error-handler #(js/alert (str "error: " %))}))
+
 
 (defn delete-jus-dialog-template [process-ok process-cancel]
   [h-box
@@ -341,9 +344,10 @@
 (def format-table
   (let [widts-nove {:naslov "57%" :glasnik "7%" :direktiva "10%" :veze "5%" :gotovo "5%"  :ok "5%" :fali "5%" :akcije "5%"}
         widts-stare {:naslov "60%" :glasnik "15%" :veze "5%" :gotovo "5%" :ok "5%" :fali "5%" :akcije "5%"}
-        widts-jus {:jusid "15%" :opis "56%"  :veze "5%" :gotovo "5%" :ok "5%" :fali "5%" :obavezan "5%" :brisi "4%"}
+        widts-jus {:jusid "15%" :naslov "56%"  :veze "5%" :gotovo "5%" :ok "5%" :fali "5%" :obavezan "5%" :brisi "4%"}
         jusid {:type :label :width "15%" :field "JUSId" :action false :label "JUS"}
         naslov {:type :label :width "60%" :field "JUSopis" :action :click :function set-path :double-click reset-path :tooltip "Puni naslov: "}
+        opis {:type :label :label "Opis" :width "60%" :field "JUSopis" :action :click :function set-path :double-click reset-path :tooltip "Puni opis: "}
         glasnik {:type :label :width "7%" :field "Glasnik" :action false}
         direktiva {:type :href :width "10%" :field "Direktiva" :href :link-d :action false}
         veze {:type :label :width "5%" :icon (icon-label "zmdi-attachment-alt" "Ukupan broj vezanih standarda") :field nil :action false :tooltip "Broj direktno vezanih naredbi: "}
@@ -365,22 +369,21 @@
      :naredbe-stare (merge-with #(merge %1 {:width %2})
                                 {:naslov naslov :glasnik glasnik :veze veze :gotovo gotovo :ok ok :fali fali :akcije akcije} widts-stare)
      :jus           (merge-with #(merge %1 {:width %2})
-                                {:jusid jusid :opis naslov :veze veze :gotovo gotovo :ok ok :fali fali :obavezan obavezan :brisi brisi} widts-jus)}))
+                                {:jusid jusid :naslov opis :veze veze :gotovo gotovo :ok ok :fali fali :obavezan obavezan :brisi brisi} widts-jus)}))
 
 
 (defn find-selected [JUSId lev]
   (let [next-lev (next-level lev)
         path @path]
-    (if (and (not-empty path) next-lev)
+    (if (and  (not-empty path) next-lev)
       (if (= JUSId (next-lev path))
         true nil) nil)))
 
 
 (def table-fields
-  {:nove [:id :naslov-full :naslov :glasnik :direktiva  :link-n :link-d  :veze :gotovo  :naredba  :ok :fali  :napomena :selected :level  :tooltip ]
-   :stare [:id :naslov-full :naslov :glasnik  :link-n  :veze :gotovo  :naredba  :ok :fali  :napomena :selected :level  :tooltip ]
-   :jus [:id :jusid :naslov-full :opis :glasnik  :link-n  :veze :gotovo  :naredba  :ok :fali :obavezan :napomena :selected :level  :tooltip ]
-   :non []})
+  {:nove [:id  :naslov-full :naslov :glasnik :direktiva  :link-n :link-d  :veze :gotovo  :naredba  :ok :fali  :napomena :selected :level  :tooltip ]
+   :stare [:id  :naslov-full :naslov :glasnik  :link-n  :veze :gotovo  :naredba  :ok :fali  :napomena :selected :level  :tooltip ]
+   :jus [:id :jusid :naslov-full :naslov :veze :gotovo  :naredba  :ok :fali :obavezan :napomena :selected :level  :tooltip ]})
 
 
 (defn rows-naredbe [data screen type]
@@ -393,7 +396,6 @@
                                    :jusid       (str JUSId ":" JUSgodina)
                                    :naslov-full JUSopis
                                    :naslov      (h/cut-str-at JUSopis screen)
-                                   :opis        (h/cut-str-at JUSopis screen)
                                    :glasnik     Glasnik
                                    :godina      JUSgodina
                                    :direktiva   Direktiva
