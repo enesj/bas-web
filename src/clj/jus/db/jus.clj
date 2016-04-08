@@ -38,7 +38,7 @@
 		))
 
 (defn naredbe []
-	(select JUS (where (> :Naredba  0)) ))
+	(select JUS (where { :Naredba  1}) ))
 
 (defn only-jus []
 	(select  JUS (where (= :Naredba  0)) ))
@@ -79,22 +79,18 @@
 (defn a-data []
 	(select JUS (where {:JUSId [in (subselect Veza (fields :child))]})))
 
-(defn parent-data [id]
-	(select Veza (fields :child) (where {:Parent id })  ))
-
 (defn active-data []
-  (vector (into (naredbe) (a-data)) (select Veza)))
+	(let [data (into (naredbe) (a-data))]
+  [data (select Veza)]))
+
 
 (defn count-veze []
   (let [active-data   (active-data)
-        naredbe  (naredbe)
-        jus-data  (first active-data)
-        veza  (second active-data)
-        data (into naredbe jus-data)]
-		 [(into {} (mapv #(hash-map (first %) {:total (count (second %)) :locked (count (filterv (fn [x] (= 1 (second x))) (second %))) :childs (map first (second %)) })
+       veza  (second active-data)
+       data (first active-data)]
+		 (into {} (mapv #(hash-map (first %) {:total (count (second %)) :locked (count (filterv (fn [x] (= 1 (second x))) (second %))) :childs (map first (second %)) })
                    (transform [ALL LAST ALL] (fn [x] (vector x (:Locked (first (filterv #(= x (:JUSId %)) data)))))
-															 (doall (for [id (mapv :JUSId data)] [id (eduction  (filter #(= id (:Parent %))) (map :Child) veza)]))))) data veza]))
-
+															 (doall (for [id (mapv :JUSId data)] [id (eduction  (filter #(= id (:Parent %))) (map :Child) veza)]))))) ))
 
 
 

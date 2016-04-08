@@ -3,7 +3,7 @@
   (:require [reagent.core :as r :refer [atom render-component]]
             [jus.helper :as h]
             [ajax.core :refer [GET POST json-response-format json-request-format url-request-format ajax-request]]
-            ;[goog.events :as events]
+    ;[goog.events :as events]
             [reforms.reagent :include-macros true :as f]
             [re-com.core :as re-com :refer [h-box v-box box gap line row-button label checkbox horizontal-bar-tabs vertical-bar-tabs title p scroller single-dropdown button alert-box
                                             v-split h-split modal-panel]
@@ -48,7 +48,7 @@
   (keyword (str (dec (js/parseInt (name level))))))
 
 (defn count-veze-fn []
-  (GET "/jus/count-veze" {:handler       #(reset! count-veze (first %))
+  (GET "/jus/count-veze" {:handler       #(reset! count-veze %)
                           :error-handler #(js/alert (str "error: " %))}))
 
 (defn init-jus-data []
@@ -278,7 +278,7 @@
 (defn naredba-event [_ data]
   (reset! nova-naredba-atom {:jusid (:id data) :naslov (:naslov-full data) :glasnik (:glasnik data) :direktiva (:direktiva data)
                              :link  (:link-d data) :file (:link-n data) :godina (:godina data) :naredba (:naredba data)
-                             :ok (:ok data) :napomena (:napomena data) :obavezan (:obavezan data) :X-CSRF-Token (h/get-value "__anti-forgery-token")})
+                             :ok    (:ok data) :napomena (:napomena data) :obavezan (:obavezan data) :X-CSRF-Token (h/get-value "__anti-forgery-token")})
   (swap! table-state assoc-in [:nova-naredba-modal] (if (:id data) {:edit? true} {:show? true})))
 
 
@@ -309,25 +309,29 @@
                                                              :anchor ic-label]]))
 
 (defn count-veza-one [childs-data count-all-childs count-ok-childs]
-  [(eduction (distinct) (remove nil?) (flatten (map #(conj (first %)) childs-data)))
-   (transduce (map second) + count-all-childs childs-data)
-   (transduce (map last) + count-ok-childs childs-data)])
-
+  [(eduction (distinct) (remove nil?) (flatten (map #(conj (:childs %))  childs-data)))
+   (transduce (map :total) + count-all-childs childs-data)
+   (transduce (map :ok) + count-ok-childs childs-data)])
 
 (defn count-veza [id]
   (if @count-veze
     (let [first-level-count @count-veze
           first-level-childs-count (:total (first-level-count id))
-          first-level-ok-count (:locked (first-level-count id))]
+          first-level-ok-count (:locked (first-level-count id))
+          total-count (:total-count (first-level-count id))]
+      (if total-count
+        [(first total-count) (second total-count) first-level-childs-count first-level-ok-count]
       (loop [childs [id]
              count-all-childs 0
              count-ok-childs 0]
         (if (not-empty childs)
-          (let [childs-data (mapv #(vector (:childs %) (:total %) (:locked %)) (vals (select-keys first-level-count childs)))]
-            (let [result (count-veza-one childs-data count-all-childs count-ok-childs)]
-              (recur (first result) (second result) (last result)  )))
-          [count-all-childs count-ok-childs first-level-childs-count first-level-ok-count])))
+          (let [childs-data (vals (select-keys first-level-count childs))
+               result (count-veza-one childs-data count-all-childs count-ok-childs)]
+            (recur (first result) (second result) (last result)))
+          (do (swap! count-veze assoc-in [id :total-count] [count-all-childs count-ok-childs] )
+              [count-all-childs count-ok-childs first-level-childs-count first-level-ok-count])))))
     [0 0 0 0]))
+
 
 (defn disable-del [& type]
   (fn [row]
@@ -342,9 +346,9 @@
       (if (> (count (:link-n row)) 1) nil true))))
 
 (def format-table
-  (let [widts-nove {:naslov "57%" :glasnik "7%" :direktiva "10%" :veze "5%" :gotovo "5%"  :ok "5%" :fali "5%" :akcije "5%"}
+  (let [widts-nove {:naslov "57%" :glasnik "7%" :direktiva "10%" :veze "5%" :gotovo "5%" :ok "5%" :fali "5%" :akcije "5%"}
         widts-stare {:naslov "60%" :glasnik "15%" :veze "5%" :gotovo "5%" :ok "5%" :fali "5%" :akcije "5%"}
-        widts-jus {:jusid "15%" :naslov "56%"  :veze "5%" :gotovo "5%" :ok "5%" :fali "5%" :obavezan "5%" :brisi "4%"}
+        widts-jus {:jusid "15%" :naslov "56%" :veze "5%" :gotovo "5%" :ok "5%" :fali "5%" :obavezan "5%" :brisi "4%"}
         jusid {:type :label :width "15%" :field "JUSId" :action false :label "JUS"}
         naslov {:type :label :width "60%" :field "JUSopis" :action :click :function set-path :double-click reset-path :tooltip "Puni naslov: "}
         opis {:type :label :label "Opis" :width "60%" :field "JUSopis" :action :click :function set-path :double-click reset-path :tooltip "Puni opis: "}
@@ -375,80 +379,80 @@
 (defn find-selected [JUSId lev]
   (let [next-lev (next-level lev)
         path @path]
-    (if (and  (not-empty path) next-lev)
+    (if (and (not-empty path) next-lev)
       (if (= JUSId (next-lev path))
         true nil) nil)))
 
 
 (def table-fields
-  {:nove [:id  :naslov-full :naslov :glasnik :direktiva  :link-n :link-d  :veze :gotovo  :naredba  :ok :fali  :napomena :selected :level  :tooltip ]
-   :stare [:id  :naslov-full :naslov :glasnik  :link-n  :veze :gotovo  :naredba  :ok :fali  :napomena :selected :level  :tooltip ]
-   :jus [:id :jusid :naslov-full :naslov :veze :gotovo  :naredba  :ok :fali :obavezan :napomena :selected :level  :tooltip ]})
+  {:nove  [:id :naslov-full :naslov :glasnik :direktiva :link-n :link-d :veze :gotovo :naredba :ok :fali :napomena :selected :level :tooltip]
+   :stare [:id :naslov-full :naslov :glasnik :link-n :veze :gotovo :naredba :ok :fali :napomena :selected :level :tooltip]
+   :jus   [:id :jusid :naslov-full :naslov :veze :gotovo :naredba :ok :fali :obavezan :napomena :selected :level :tooltip]})
 
 
 (defn rows-naredbe [data screen type]
-  (let [data (if (= (:level data) :2) (if  (= type :jus)  {:level (:level data) :data (filter #(= (:Naredba  %) 0) (:data data))}
-                                                          {:level (:level data) :data (filter #(> (:Naredba  %) 0) (:data data))} ) data)]
+  (let [data (if (= (:level data) :2) (if (= type :jus) {:level (:level data) :data (filter #(= (:Naredba %) 0) (:data data))}
+                                                        {:level (:level data) :data (filter #(> (:Naredba %) 0) (:data data))}) data)]
     (map #(vector (key %) (select-keys (val %) (type table-fields)))
-       (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis JUSgodina Glasnik Direktiva Link-n Link-d Naredba Locked Mandatory Napomena Fali]} x
-                               count-veza (count-veza JUSId)]
-                           {JUSId {:id          JUSId
-                                   :jusid       (str JUSId ":" JUSgodina)
-                                   :naslov-full JUSopis
-                                   :naslov      (h/cut-str-at JUSopis screen)
-                                   :glasnik     Glasnik
-                                   :godina      JUSgodina
-                                   :direktiva   Direktiva
-                                   :link-n      Link-n
-                                   :link-d      Link-d
-                                   :veze        (first count-veza)
-                                   :gotovo      (second count-veza)
-                                   :naredba     Naredba
-                                   :ok          Locked
-                                   :obavezan    Mandatory
-                                   :fali        Fali
-                                   :napomena    Napomena
-                                   :selected    (find-selected JUSId (:level data))
-                                   :level       (:level data)
-                                   :tooltip     {:veze (nth count-veza 2) :gotovo (last count-veza) :naslov JUSopis :ok Napomena}}})) (:data data))))))
+         (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis JUSgodina Glasnik Direktiva Link-n Link-d Naredba Locked Mandatory Napomena Fali]} x
+                                      count-veza (count-veza JUSId)]
+                                  {JUSId {:id          JUSId
+                                          :jusid       (str JUSId ":" JUSgodina)
+                                          :naslov-full JUSopis
+                                          :naslov      (h/cut-str-at JUSopis screen)
+                                          :glasnik     Glasnik
+                                          :godina      JUSgodina
+                                          :direktiva   Direktiva
+                                          :link-n      Link-n
+                                          :link-d      Link-d
+                                          :veze        (first count-veza)
+                                          :gotovo      (second count-veza)
+                                          :naredba     Naredba
+                                          :ok          Locked
+                                          :obavezan    Mandatory
+                                          :fali        Fali
+                                          :napomena    Napomena
+                                          :selected    (find-selected JUSId (:level data))
+                                          :level       (:level data)
+                                          :tooltip     {:veze (nth count-veza 2) :gotovo (last count-veza) :naslov JUSopis :ok Napomena}}})) (:data data))))))
 
 
 (defn dropdown-data [data criteria]
-   (sort-by :id (filterv #(= criteria (:prefix %))
-                     (mapv (fn [x] (let [{:keys [JUSId]} x]
-                                                {:id JUSId :label JUSId :prefix (first (clojure.string/split JUSId "."))})) data))))
+  (sort-by :id (filterv #(= criteria (:prefix %))
+                        (mapv (fn [x] (let [{:keys [JUSId]} x]
+                                        {:id JUSId :label JUSId :prefix (first (clojure.string/split JUSId "."))})) data))))
 
 (def dropdown-prefix
-[{:id "A", :label "A"}
-  {:id "B", :label "B"}
-  {:id "C", :label "C"}
-  {:id "D", :label "D"}
-  {:id "E", :label "E"}
-  {:id "F", :label "F"}
-  {:id "G", :label "G"}
-  {:id "H", :label "H"}
-  {:id "I", :label "I"}
-  {:id "J", :label "J"}
-  {:id "K", :label "K"}
-  {:id "L", :label "L"}
-  {:id "M", :label "M"}
-  {:id "N", :label "N"}
-  {:id "P", :label "P"}
-  {:id "R", :label "R"}
-  {:id "U", :label "U"}
-  {:id "Z", :label "Z"}])
+  [{:id "A", :label "A"}
+   {:id "B", :label "B"}
+   {:id "C", :label "C"}
+   {:id "D", :label "D"}
+   {:id "E", :label "E"}
+   {:id "F", :label "F"}
+   {:id "G", :label "G"}
+   {:id "H", :label "H"}
+   {:id "I", :label "I"}
+   {:id "J", :label "J"}
+   {:id "K", :label "K"}
+   {:id "L", :label "L"}
+   {:id "M", :label "M"}
+   {:id "N", :label "N"}
+   {:id "P", :label "P"}
+   {:id "R", :label "R"}
+   {:id "U", :label "U"}
+   {:id "Z", :label "Z"}])
 
 
 
 (defn rows-level [level]
   (if (not= level :0)
     (let [parent (level @path)
-        criteria (->> (:veza @table-state)
-                      (filterv #(= parent (:Parent %)))
-                      (mapv :Child)
-                      (into #{}))]
-    {:data (filterv #(criteria (:JUSId %)) (:data @jus-data)) :level level})
-    {:data (filter #(= (:Naredba %) 1) (:data @jus-data)) :level level }))
+          criteria (->> (:veza @table-state)
+                        (filterv #(= parent (:Parent %)))
+                        (mapv :Child)
+                        (into #{}))]
+      {:data (filterv #(criteria (:JUSId %)) (:data @jus-data)) :level level})
+    {:data (filter #(= (:Naredba %) 1) (:data @jus-data)) :level level}))
 
 
 (defn resize []
