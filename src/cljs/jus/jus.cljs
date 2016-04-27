@@ -95,9 +95,9 @@
 (defn fali-jus [row]
   (let [id (:id row)
         criteria {:JUSId id}
-        data (if (= 1 (:fali row)) 0 1)
+        data (if (= 1 (:fali row)) 0 1)]
         ;parent ((:level row) @path)
-        ]
+
     (GET "/jus/update" {:params        {:filter criteria :field-data [{:Fali data}] :like false}
                         :handler       (fn [x] (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Fali] data y)))))
 
@@ -308,30 +308,27 @@
                                                              :showing? showing?
                                                              :anchor ic-label]]))
 
-(defn count-veza-one [childs-data count-all-childs count-ok-childs]
-  [(eduction (distinct) (remove nil?) (flatten (map #(conj (:childs %))  childs-data)))
-   (transduce (map :total) + count-all-childs childs-data)
-   (transduce (map :ok) + count-ok-childs childs-data)])
 
-(defn count-veza [id]
-  (if @count-veze
-    (let [first-level-count @count-veze
-          first-level-childs-count (:total (first-level-count id))
-          first-level-ok-count (:locked (first-level-count id))
-          total-count (:total-count (first-level-count id))]
+(defn count-veza [id first-level-count]
+  (if first-level-count
+    (let [total-count (:total-count (first-level-count id))]
       (if total-count
-        [(first total-count) (second total-count) first-level-childs-count first-level-ok-count]
-      (loop [childs [id]
-             count-all-childs 0
-             count-ok-childs 0]
-        (if (not-empty childs)
-          (let [childs-data (vals (select-keys first-level-count childs))
-               result (count-veza-one childs-data count-all-childs count-ok-childs)]
-            (recur (first result) (second result) (last result)))
-          (do (swap! count-veze assoc-in [id :total-count] [count-all-childs count-ok-childs] )
-              [count-all-childs count-ok-childs first-level-childs-count first-level-ok-count])))))
+        [(first total-count) 0 0 0]
+       (loop [childs [id]
+              all-childs #{}]
+         (if (not-empty childs)
+           (let [childs-data (vals (select-keys first-level-count childs))
+                 result (into #{} (flatten (map :childs  childs-data)))]
+               (recur  result  (into  all-childs  result)))
+           (do (swap! count-veze assoc-in [id :total-count] [(count all-childs) 0])
+               [(count all-childs) 0 0 0])))))
     [0 0 0 0]))
 
+
+
+
+
+;;    (count-veza "1")
 
 (defn disable-del [& type]
   (fn [row]
@@ -390,12 +387,12 @@
    :jus   [:id :jusid :naslov-full :naslov :veze :gotovo :naredba :ok :fali :obavezan :napomena :selected :level :tooltip]})
 
 
-(defn rows-naredbe [data screen type]
+(defn rows-naredbe [data screen type count-veze]
   (let [data (if (= (:level data) :2) (if (= type :jus) {:level (:level data) :data (filter #(= (:Naredba %) 0) (:data data))}
                                                         {:level (:level data) :data (filter #(> (:Naredba %) 0) (:data data))}) data)]
     (map #(vector (key %) (select-keys (val %) (type table-fields)))
          (into {} (mapv (fn [x] (let [{:keys [JUSId JUSopis JUSgodina Glasnik Direktiva Link-n Link-d Naredba Locked Mandatory Napomena Fali]} x
-                                      count-veza (count-veza JUSId)]
+                                      count-veza (count-veza JUSId count-veze)]
                                   {JUSId {:id          JUSId
                                           :jusid       (str JUSId ":" JUSgodina)
                                           :naslov-full JUSopis
@@ -467,7 +464,7 @@
       [0 (:JUSopis jus)]
       [1 (:JUSId jus)])))
 
-(defn data-tables-level [level path screen]
+(defn data-tables-level [level path screen count-veze]
   (let [path-count (count path)
         level-int (js/parseInt (name level))]
     ^{:key level}
@@ -492,7 +489,7 @@
          :min-width "800px"
          :max-height "270px"
          :min-height "100px"
-         :child [data-table (rows-naredbe (rows-level level) screen :jus) (:jus format-table)
+         :child [data-table (rows-naredbe (rows-level level) screen :jus count-veze) (:jus format-table)
                  level]]
         [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:1 colors)}])]]))
 
@@ -505,6 +502,7 @@
                              path-count (count at-path)
                              jus-only (:data @jus-all-data)
                              ;screen @(r/cursor table-state [:table-size])
+                             count-veze @count-veze
                              screen 80
                              choice (:choice @showing)
                              prefix (:prefix @showing)
@@ -554,7 +552,7 @@
                                                          :min-width "800px"
                                                          :max-height "270px"
                                                          ;:min-height "200px"
-                                                         :child [data-table (rows-naredbe (rows-level :0) screen :nove) (:naredbe-nove format-table) :0]]
+                                                         :child [data-table (rows-naredbe (rows-level :0) screen :nove count-veze) (:naredbe-nove format-table) :0]]
                                                         [button
                                                          :label [:span "Nova naredba " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
                                                          :on-click #(naredba-event nil {:naredba 1})
@@ -588,7 +586,7 @@
                                                          :max-height "270px"
                                                          :child
                                                          (if (not-empty at-path)
-                                                           [data-table (rows-naredbe (rows-level :1) screen :stare) (:naredbe-stare format-table) :1]
+                                                           [data-table (rows-naredbe (rows-level :1) screen :stare count-veze) (:naredbe-stare format-table) :1]
                                                            [:div ""])]
                                                         [button
                                                          :label [:span "Stara naredba I " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
@@ -622,7 +620,7 @@
                                                          :max-height "270px"
                                                          :child
                                                          (if (not-empty at-path)
-                                                           [data-table (rows-naredbe (rows-level :2) screen :stare) (:naredbe-stare format-table) :2]
+                                                           [data-table (rows-naredbe (rows-level :2) screen :stare count-veze) (:naredbe-stare format-table) :2]
                                                            [:div ""])]
                                                         [button
                                                          :label [:span "Stara naredba II " [:i.zmdi.zmdi-hc-fw-rc.zmdi-plus]]
@@ -646,7 +644,7 @@
                                                        :max-height (str (* v-height 0.8) "px")
                                                        :child [v-box
                                                                :width "100%"
-                                                               :children [(doall (for [level-key (keys (rest at-path))] (data-tables-level level-key at-path screen)))
+                                                               :children [(doall (for [level-key (keys (rest at-path))] (data-tables-level level-key at-path screen count-veze)))
                                                                           (if (and (nil? choice) alow-new-veza (not-empty (rest at-path)))
                                                                             [box :child "Dodaj JUS standard u listu veza."
                                                                              :padding "6px"
