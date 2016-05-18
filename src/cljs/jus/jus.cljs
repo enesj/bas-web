@@ -308,7 +308,6 @@
                                                              :showing? showing?
                                                              :anchor ic-label]]))
 
-
 (defn count-veza [id first-level-count]
   (if first-level-count
     (let [total-count (:total-count (first-level-count id))]
@@ -323,8 +322,6 @@
            (do (swap! count-veze assoc-in [id :total-count] [(count all-childs) 0])
                [(count all-childs) 0 0 0])))))
     [0 0 0 0]))
-
-
 
 
 

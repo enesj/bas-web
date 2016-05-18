@@ -113,6 +113,40 @@
   (doall (for [id (pmap :JUSId (first active-data))] [id (count-veza id first-level-count)]))
    @count-veze-atom))
 
+(defn get-path [id veze]
+  (loop [id id path []]
+    (let [parent (map :Parent (filter #(= id (:Child %) ) veze))]
+      (if (empty? parent)
+        path
+
+        (recur (first parent) (conj path (first parent)))
+        ))))
+
+(defn all-acitve-paths []
+  (let [[data veze]   (active-data)]
+    (group-by #(last (last %))
+              (doall
+                    (for [child (map #(vector (:JUSId %) (:JUSopis %))(filter #(and (= 0 ( :Locked %) ) (= 0 (:Fali %) ) ) data)  )]
+    [ (if (> (count (first child)) 3) (first child) (second child) ) (count (get-path (first child) veze))
+     (mapv #(if (> (count %) 3) % (:JUSopis (first (filter (fn [x] (=  % (:JUSId x) )) data))))
+           (get-path (first child) veze))]))
+  )))
+
+
+
+(defn all-paths []
+  (let [[data veze]   (active-data)]
+    (group-by #(last (last %))
+              (doall
+                (for [child (map #(vector (:JUSId %) (:JUSopis %))data  )]
+                  [ (if (> (count (first child)) 3) (first child) (second child) ) (count (get-path (first child) veze))
+                   (mapv #(if (> (count %) 3) % (:JUSopis (first (filter (fn [x] (=  % (:JUSId x) )) data))))
+                         (get-path (first child) veze))]))
+              )))
+
+;(map #(vector (first %) (count (second %))) (all-paths))
+
+;(map #(vector (first %) (count (second %))) (all-acitve-paths))
 
 ;(defn get-user-by-email [email] (first (select user (where {:email email}) (limit 1))))
 ;(defn get-user-by-act-id [id] (first (select user (where {:activationid id}) (limit 1))))
