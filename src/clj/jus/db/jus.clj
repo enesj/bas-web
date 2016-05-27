@@ -118,7 +118,6 @@
     (let [parent (map :Parent (filter #(= id (:Child %) ) veze))]
       (if (empty? parent)
         path
-
         (recur (first parent) (conj path (first parent)))
         ))))
 
@@ -143,6 +142,9 @@
                    (mapv #(if (> (count %) 3) % (:JUSopis (first (filter (fn [x] (=  % (:JUSId x) )) data))))
                          (get-path (first child) veze))]))
               )))
+
+
+
 
 ;(map #(vector (first %) (count (second %))) (all-paths))
 
