@@ -113,8 +113,8 @@
                                (f/text {:on-blur #(reset! postojeca (naredba-exist (h/get-value "naslov")))
                                         :style   (if @postojeca {:border-color "red"} {:border-color "lightgray"})}
                                        "Naslov" nova-naredba-atom [:naslov]
-                                       :warn-fn #(if @postojeca "Ova naredba postoji!"))
-                               )
+                                       :warn-fn #(if @postojeca "Ova naredba postoji!")))
+
                              (f/text "Glasnik" nova-naredba-atom [:glasnik])
                              (f/text "Napomena" nova-naredba-atom [:napomena])
                              (f/text "File" nova-naredba-atom [:file])
@@ -131,8 +131,8 @@
                       (f/text "Napomena" nova-naredba-atom [:napomena])
                       (f/form-buttons
                         (f/button-primary "Snimi" #(process-ok))
-                        (f/button-default "Cancel" #(process-cancel)))))
-                )]])
+                        (f/button-default "Cancel" #(process-cancel))))))]])
+
 
 
 (defn tooltip-label [label1 label tip show-tooltip?]
@@ -178,7 +178,7 @@
                                             :children
                                             [(doall (for [r-b (:children params)]
                                                       ^{:key (:id r-b)}
-                                                      [row-button :md-icon-name (:md-icon-name r-b) :mouse-over-row? mouse-over-row? :tooltip (:tooltip r-b)
+                                                      [row-button :md-icon-name tt :mouse-over-row? mouse-over-row? :tooltip (:tooltip r-b)
                                                        :tooltip-position (:tooltip-position r-b) :disabled? ((:disabled? r-b) row) :on-click #((:action r-b) level row)]))]] nil)
                              {:key (str column (:id row))}))))]]))
 

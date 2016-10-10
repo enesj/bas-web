@@ -43,8 +43,6 @@
 (defn only-jus []
   (select  JUS (where (= :Naredba  0))))
 
-;(def only-jus
-;	(only-jus-fn))
 
 (defn get-veza []
   (select Veza))
