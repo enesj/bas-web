@@ -17,5 +17,5 @@ Your Team"
  :private-recaptcha-key   "your private captcha key"
  :recaptcha-domain        "yourdomain"
  :port                    2000
- :closp-definitions       "env/dev/entities"
- }
+ :closp-definitions       "env/dev/entities"}
+

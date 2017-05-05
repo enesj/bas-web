@@ -12,7 +12,8 @@
             [jus.utils :refer [panel-title title2 args-table material-design-hyperlink github-hyperlink status-text]]
             [re-com.popover :refer [popover-tooltip]]
             [jus.data-table :refer [data-table table-state nova-naredba-atom colors delete-dialog-template naredba-dialog-template
-                                    cljs-ajax-upload-file jus-data path]])
+                                    cljs-ajax-upload-file jus-data path]]
+            [reforms.core :as f])
   (:import [goog.events EventType]))
 
 
@@ -39,7 +40,6 @@
         all-childs))))
 
 (defn is-child? [id child] (some #{child} (all-childs id)))
-
 
 (defn next-level [level]
   (keyword (str (inc (js/parseInt (name level))))))
@@ -109,8 +109,6 @@
     (GET "/jus/update" {:params        {:filter criteria :field-data [{:Mandatory data}] :like false}
                         :handler       (fn [x] (if (= x 1) (swap! jus-data update-in [:data] (fn [y] (setval [ALL #(= id (:JUSId %)) :Mandatory] data y)))))
                         :error-handler #(js/alert (str "error: " %))})))
-
-
 
 
 (defn exist-veza [& id]
@@ -361,7 +359,6 @@
                :children [{:id "r-b-1" :md-icon-name "zmdi zmdi-edit" :tooltip "Uredi nardbu" :tooltip-position :left-center :disabled? (disable-del nil) :action naredba-event}
                           {:id               "r-b-2" :md-icon-name "zmdi zmdi-delete" :tooltip (if (alow-new-veza) "Obriši vezu!" "Ova veza je zaključana!")
                            :tooltip-position :left-center :disabled? (disable-del nil) :action delete-veza-event}]}]
-
     {:naredbe-nove  (merge-with #(merge %1 {:width %2})
                                 {:naslov naslov :glasnik glasnik :direktiva direktiva :veze veze :gotovo gotovo :ok ok :fali fali :akcije akcije} widts-nove)
      :naredbe-stare (merge-with #(merge %1 {:width %2})

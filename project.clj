@@ -77,7 +77,6 @@
   {:builds {:dev {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
                   :figwheel     {:css-dirs   ["resources/public/css"] ;; watch and update CSS
                                  :on-jsload  "closp-new.dev/main"}
-
                   :compiler     {:main       "closp-new.dev"
                                  :asset-path "/js/compiled/out"
                                  :output-to  "resources/public/js/compiled/app.js"

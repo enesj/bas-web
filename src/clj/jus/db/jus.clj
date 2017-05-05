@@ -85,7 +85,7 @@
 (defn count-veze [active-data]
   (let [[data veza]  active-data]
      (into {} (pmap #(hash-map (first %) {:total 0 :locked 0 :childs  (second %)})
-                               (doall (for [id (pmap :JUSId data)] [id (mapv :Child (filterv #(= id (:Parent %))  veza))]))))))
+                (doall (for [id (pmap :JUSId data)] [id (mapv :Child (filterv #(= id (:Parent %))  veza))]))))))
 
 (def count-veze-atom
   (atom nil))
@@ -107,27 +107,27 @@
 
 (defn count-veze-all []
  (let [active-data   (active-data)
-        first-level-count (reset! count-veze-atom  (count-veze active-data))]
+       first-level-count (reset! count-veze-atom  (count-veze active-data))]
   (doall (for [id (pmap :JUSId (first active-data))] [id (count-veza id first-level-count)]))
-   @count-veze-atom))
+  @count-veze-atom))
 
 (defn get-path [id veze]
   (loop [id id path []]
     (let [parent (map :Parent (filter #(= id (:Child %) ) veze))]
       (if (empty? parent)
         path
-        (recur (first parent) (conj path (first parent)))
-        ))))
+        (recur (first parent) (conj path (first parent)))))))
+
 
 (defn all-acitve-paths []
   (let [[data veze]   (active-data)]
     (group-by #(last (last %))
-              (doall
-                    (for [child (map #(vector (:JUSId %) (:JUSopis %))(filter #(and (= 0 ( :Locked %) ) (= 0 (:Fali %) ) ) data)  )]
-    [ (if (> (count (first child)) 3) (first child) (second child) ) (count (get-path (first child) veze))
-     (mapv #(if (> (count %) 3) % (:JUSopis (first (filter (fn [x] (=  % (:JUSId x) )) data))))
-           (get-path (first child) veze))]))
-  )))
+      (doall
+        (for [child (map #(vector (:JUSId %) (:JUSopis %))(filter #(and (= 0 ( :Locked %) ) (= 0 (:Fali %) ) ) data))]
+          [(if (> (count (first child)) 3) (first child) (second child) ) (count (get-path (first child) veze))
+           (mapv #(if (> (count %) 3) % (:JUSopis (first (filter (fn [x] (=  % (:JUSId x) )) data))))
+                 (get-path (first child) veze))])))))
+
 
 
 
@@ -135,11 +135,11 @@
   (let [[data veze]   (active-data)]
     (group-by #(last (last %))
               (doall
-                (for [child (map #(vector (:JUSId %) (:JUSopis %))data  )]
-                  [ (if (> (count (first child)) 3) (first child) (second child) ) (count (get-path (first child) veze))
+                (for [child (map #(vector (:JUSId %) (:JUSopis %))data)]
+                  [(if (> (count (first child)) 3) (first child) (second child) ) (count (get-path (first child) veze))
                    (mapv #(if (> (count %) 3) % (:JUSopis (first (filter (fn [x] (=  % (:JUSId x) )) data))))
-                         (get-path (first child) veze))]))
-              )))
+                         (get-path (first child) veze))])))))
+
 
 
 

@@ -9,5 +9,5 @@
 
 (defn main []
   (table/init)
-  (jus/main)
-  )
+  (jus/main))
+

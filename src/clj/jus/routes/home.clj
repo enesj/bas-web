@@ -1,7 +1,7 @@
 (ns jus.routes.home
   (:require [compojure.core :refer [defroutes GET POST]]
             [jus.layout :as layout]
-						[ring.util.response :refer [response]]))
+            [ring.util.response :refer [response]]))
 
 (defn home-page []
   (layout/render "home/index.html"))

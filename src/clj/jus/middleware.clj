@@ -13,9 +13,9 @@
             [clojure-miniprofiler :refer [wrap-miniprofiler in-memory-store]]
             [ring.middleware.transit :refer [wrap-transit-response]]
             [ring.middleware.reload :refer [wrap-reload]]
-            [ring.middleware.multipart-params :refer [wrap-multipart-params]]
+            [ring.middleware.multipart-params :refer [wrap-multipart-params]]))
     ;[jus.service.auth :refer [auth-backend]]
-            ))
+
 
 (defonce in-memory-store-instance (in-memory-store))
 
