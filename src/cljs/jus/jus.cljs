@@ -12,8 +12,8 @@
             [jus.utils :refer [panel-title title2 args-table material-design-hyperlink github-hyperlink status-text]]
             [re-com.popover :refer [popover-tooltip]]
             [jus.data-table :refer [data-table table-state nova-naredba-atom colors delete-dialog-template naredba-dialog-template
-                                    cljs-ajax-upload-file jus-data path]]
-            [reforms.core :as f])
+                                    cljs-ajax-upload-file jus-data path]])
+            ;[reforms.core :as f])
   (:import [goog.events EventType]))
 
 
@@ -26,7 +26,7 @@
 
 (def count-veze (atom nil))
 
-(def showing (atom {:hover? false :choice nil :prefix "A"}))
+(def showing (atom {:hover? false :find-jus nil :find-prefix "A" :choice nil :prefix "A"}))
 
 (defn new-id [] (inc (js/parseInt (:JUSId (apply max-key #(js/parseInt (:JUSId %)) (filter #(> (:Naredba %) 0) (:data @jus-data)))))))
 
@@ -487,6 +487,11 @@
                  level]]
         [line :size "1px" :color "lightgray" :style {:width "70%" :align-self "center" :background-color (:1 colors)}])]]))
 
+
+(defn select-jus [id]
+  (let [first-parent (:Parent (first (filter #(= (:Child %) id) (:veza @table-state))))]
+    (reset! path {:1 "0", :2 0 :3 first-parent :4 id})))
+
 (defn entry-point []
   (r/create-class
     {;:component-did-mount  #(do (events/listen js/window EventType.RESIZE (resize)))
@@ -500,9 +505,10 @@
                              screen 80
                              choice (:choice @showing)
                              prefix (:prefix @showing)
+                             find-jus (:find-jus @showing)
+                             find-prefix (:find-prefix @showing)
                              alow-new-veza (alow-new-veza)
                              v-height (* (.-innerHeight js/window) 0.8)]
-
                          (if (not-empty [1])
                            [:div
                             [v-box
@@ -516,6 +522,57 @@
                                         [edit-nova-naredba-dialog]
                                         [title :level :level2 :style {:font-weight "bold" :color "#555657"} :label "Veza usvojenih evropskih direktiva i JUS standarda "
                                          :attr {:on-double-click #(reset! temp-path at-path)}]
+                                        [box
+                                         :align-self :center
+                                         :margin "5px"
+                                         :child (str find-jus " - " (:JUSopis (first (filterv #(= find-jus (:JUSId %)) jus-only))))]
+                                        [h-box
+                                         :justify :center
+                                         :margin "15px"
+                                         :children [
+                                                    [single-dropdown
+                                                     :choices dropdown-prefix
+                                                     :model find-prefix
+                                                     :width "80px"
+                                                     :max-height "100px"
+                                                     :filter-box? true
+                                                     :on-change
+                                                     #(do (swap! showing assoc-in [:find-jus] nil) (swap! showing assoc-in [:find-prefix] %))]
+                                                    [gap :size "4px"]
+                                                    [single-dropdown
+                                                     :choices (dropdown-data jus-only find-prefix)
+                                                     :model find-jus
+                                                     :width "150px"
+                                                     :max-height "100px"
+                                                     :filter-box? true
+                                                     :on-change
+                                                     #(swap! showing assoc-in [:find-jus] %)]
+                                                    [gap :size "4px"]
+                                                    [button
+                                                     :label [:span "JUS " [:i.zmdi.zmdi-hc-fw-rc.zmdi-search]]
+                                                     ;:disabled? (or (exist-veza) (not alow-new-veza) (< (count at-path) 2))
+                                                     :on-click #(select-jus find-jus)
+                                                     :style {:color            "white"
+                                                             :font-size        "14px"
+                                                             :background-color (:3 colors)
+                                                             :font-weight      "100"
+                                                             :border           "none"
+                                                             :padding          "7px 12px"}]
+                                                    [gap :size "4px"]
+                                                    [button
+                                                     :label [:span "Briši " [:i.zmdi.zmdi-hc-fw-rc.zmdi-reset]]
+                                                     ;:disabled? (or (exist-veza) (not alow-new-veza) (< (count at-path) 2))
+                                                     :on-click (fn []
+                                                                  (reset! path nil)
+                                                                  (swap! showing assoc-in [:find-jus] nil)
+                                                                  (swap! showing assoc-in [:find-prefix] "A"))
+                                                     :style {:color            "white"
+                                                             :font-size        "14px"
+                                                             :background-color (:3 colors)
+                                                             :font-weight      "100"
+                                                             :border           "none"
+                                                             :padding          "7px 12px"}]]]
+
                                         [line :size "3px" :color "lightgray" :style {:width "90%" :align-self "center"}]
                                         [v-box
                                          :gap "2px"

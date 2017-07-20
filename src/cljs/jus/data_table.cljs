@@ -178,7 +178,7 @@
                                             :children
                                             [(doall (for [r-b (:children params)]
                                                       ^{:key (:id r-b)}
-                                                      [row-button :md-icon-name tt :mouse-over-row? mouse-over-row? :tooltip (:tooltip r-b)
+                                                      [row-button :md-icon-name (:md-icon-name r-b) :mouse-over-row? mouse-over-row? :tooltip (:tooltip r-b)
                                                        :tooltip-position (:tooltip-position r-b) :disabled? ((:disabled? r-b) row) :on-click #((:action r-b) level row)]))]] nil)
                              {:key (str column (:id row))}))))]]))
 
